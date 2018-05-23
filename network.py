@@ -24,7 +24,7 @@ class Network():
     def __init__(self, model_file=None):
         self.l2_const = 1e-4                                        # Coefficient for l2 penalty
         self.create_network()
-        self._loss_train_optimizer()
+        self.setup_trainer()
 
         if model_file:                                              # If weights are provided, load the network with them
             network_weights = pickle.load(open(model_file, 'rb'))
@@ -49,9 +49,10 @@ class Network():
         (This part needs something thinking/seeing what is available from APIs)
         """
 
+        # (channels, width, height, frames)
         input_x = network = Input((3, 6, 6, 48))
 
-        k_s = (3,3)                     # Kernel Size
+        k_s = (3,3,3)                     # Kernel Size
 
         # Convolutional Layers
         # Maybe make some layers TimeDistributed(Conv2D(...)) ?
@@ -67,11 +68,11 @@ class Network():
                 data_format = "channels_first",
                 activation = "relu"
                 kernel_regularizer=l2(self.l2_const))(network)
-        #network = Conv3D(filters = 64,
-        #        padding = "same",
-        #        data_format = "channels_first",
-        #        activation = "relu",
-        #        kernel_regularizer=l2(self.l2_const))(network)
+        network = Conv3D(filters = 64,
+                padding = "same",
+                data_format = "channels_first",
+                activation = "relu",
+                kernel_regularizer=l2(self.l2_const))(network)
         network = Conv3D(filters = 128,
                 padding = "same",
                 data_format = "channels_first",
@@ -84,5 +85,35 @@ class Network():
                 kernel_regularizer=l2(self.l2_const))(network)
 
         ## LSTM Layers
+        network = LSTM(units = 256,
+                kernel_regularizer=l2(self.l2_const))(network)
+        network = LSTM(units = 256,
+                kernel_regularizer=l2(self.l2_const))(network)
 
+        ## Output
+        network = Dense(units = 1,
+                activation = linear)
 
+        self.model = Model(inputs = input_x, outputs = network)
+
+    def setup_trainer(self):
+        """ Compile the network and setup for training """
+        
+        optimizer = Adam()
+        loss = 'mean_squared_error'
+        self.model.compile(optimizer  = optimizer, loss = loss)
+        
+        def train(window, price, learning_rate):
+            self.model.fit(x = window,
+                    y = price,
+                    batch_size = 1,
+                    verbose = 2)
+        self.train = train
+
+    def get_weights(self):
+    """ Returns the weights of the network """
+        return self.model.get_weights()
+
+    def save_model(self, file_name):
+        w = self.get_weights()
+        pickle.dump(w, open(file_name, 'wb'), protocol = 2)
