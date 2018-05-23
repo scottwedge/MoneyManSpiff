@@ -9,7 +9,7 @@ Author: Parker Timmerman
 from keras.engine.topology import Input
 from keras.engine.training import Model
 from keras.layers import Dense, Conv3D, MaxPooling2D
-from keras.layers.code import Flatten
+from keras.layers.core import Flatten
 from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.utils import np_utils
@@ -60,35 +60,35 @@ class Network():
                 kernel_size = k_s,
                 padding = "same",
                 data_format = "channels_first",
-                activation = "relu"
-                kernel_regularizer=l2(self.l2_const))(network)
+                activation = "relu",
+                kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 64,
                 kernel_size = k_s,
                 padding = "same",
                 data_format = "channels_first",
-                activation = "relu"
-                kernel_regularizer=l2(self.l2_const))(network)
+                activation = "relu",
+                kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 64,
                 padding = "same",
                 data_format = "channels_first",
                 activation = "relu",
-                kernel_regularizer=l2(self.l2_const))(network)
+                kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 128,
                 padding = "same",
                 data_format = "channels_first",
                 activation = "relu",
-                kernel_regularizer=l2(self.l2_const))(network)
+                kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 128,
                 padding = "same",
                 data_format = "channels_first",
                 activation = "relu",
-                kernel_regularizer=l2(self.l2_const))(network)
+                kernel_regularizer = l2(self.l2_const))(network)
 
         ## LSTM Layers
         network = LSTM(units = 256,
-                kernel_regularizer=l2(self.l2_const))(network)
+                kernel_regularizer = l2(self.l2_const))(network)
         network = LSTM(units = 256,
-                kernel_regularizer=l2(self.l2_const))(network)
+                kernel_regularizer = l2(self.l2_const))(network)
 
         ## Output
         network = Dense(units = 1,
@@ -104,6 +104,7 @@ class Network():
         self.model.compile(optimizer  = optimizer, loss = loss)
         
         def train(window, price, learning_rate):
+            K.set_value(self.model.optimizer.lr, learning_rate)
             self.model.fit(x = window,
                     y = price,
                     batch_size = 1,
@@ -111,7 +112,7 @@ class Network():
         self.train = train
 
     def get_weights(self):
-    """ Returns the weights of the network """
+        """ Returns the weights of the network """
         return self.model.get_weights()
 
     def save_model(self, file_name):
