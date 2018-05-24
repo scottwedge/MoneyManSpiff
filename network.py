@@ -12,7 +12,7 @@ from keras.layers import Dense, Conv3D, MaxPooling2D, LSTM, TimeDistributed
 from keras.layers.core import Flatten
 from keras.regularizers import l2
 from keras.optimizers import Adam
-from keras.utils import np_utils
+from keras.utils import np_utils, plot_model
 import keras.backend as K
 
 import numpy as np
@@ -97,6 +97,8 @@ class Network():
                 activation = 'linear')(network)
 
         self.model = Model(inputs = input_x, outputs = self.network)
+        print(self.model.summary())
+        #plot_model(self.model, to_file="model.png", show_shapes=True)
 
     def setup_trainer(self):
         """ Compile the network and setup for training """
@@ -105,12 +107,13 @@ class Network():
         loss = 'mean_squared_error'
         self.model.compile(optimizer  = optimizer, loss = loss, metrics = ['accuracy'])
         
-        def train_step(window, price, learning_rate):
+        def train_step(videos, prices, learning_rate, epochs):
             K.set_value(self.model.optimizer.lr, learning_rate)
-            self.model.fit(x = window,
-                    y = price,
-                    batch_size = 1,
-                    verbose = 2)
+            self.model.fit(x = videos,
+                    y = prices,
+                    batch_size = len(videos),
+                    epochs = epochs,
+                    verbose = 1)
         self.train_step = train_step
 
     def get_weights(self):

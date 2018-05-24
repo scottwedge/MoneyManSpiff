@@ -23,7 +23,7 @@ class TrainingPipeline():
         self.lr_multiplier = 1.0                        # Dynamically adjust learning rate using Kullbeck-Liebler
         self.kl_targ = 0.02
 
-        self.batch_size = 8
+        self.batch_size = 16
         self.epochs = 32
 
         if initial_model:
@@ -63,7 +63,10 @@ class TrainingPipeline():
         start_time = max([int(df['date'][0]) for df in data_frames])
         end_time = min([int(open("data/{}".format(pair)).readline()) for pair in pairs])
 
-        for time in range(1464066600, 1464066600 + (100 * 300), 300):
+        for time in range(1464066600, 1464066600 + (300 * 500), 300):
+            if time % (300 * 5000) == 0:
+                print("{} : {}".format(time, end_time))
+
             image = np.zeros((channels, width, height), dtype=float)
             for idx, df in enumerate(data_frames):
                 row = df.loc[df['date'] == time]
@@ -91,6 +94,9 @@ class TrainingPipeline():
 
         # Build a feed of "images" that we can feed to the network
         images = self.buildImages(given_pairs, ['volume', 'quoteVolume', 'weightedAverage'])
+        numImgs = len(images)
+
+        print("Finished building images! Beginning to create vidoes and train the network...")
 
         video_buffer = []
 
@@ -98,20 +104,28 @@ class TrainingPipeline():
         video = deque()
         for i in range(0, 48):
             video.append(images.popleft()[1])
-        price = images[11][1][2][0][0               # This is the price of ETH an hour ahead]
+        price = images[11][1][2][0][0]               # This is the price of ETH an hour ahead
 
-        video_buffer.append((video, price))
+        video_buffer.append((np.array(video), price))
 
         # Pop off the first (earliest) frame from the video, and push on the next one from images
-        while images:
-            video.popleft()
-            video.append(images.popleft())
-            price = images[11][1][2][0][0]
+        while len(images) >= 12:
+            video.popleft()                         # Remove earliest frame
+            video.append(images.popleft()[1])       # Add on the latest image
+            price = images[11][1][2][0][0]          # Get the price for an hour ahead for ETH
 
-            video_buffer.append((video, price))
+            video_buffer.append((np.array(video), price))           # Add videos to a buffer to 
 
-            if (len(video_buffer) >= batch_size):
-                
+            if (len(video_buffer) >= self.batch_size):
+                videos = np.array([data[0].reshape(3, 6, 6, 48) for data in video_buffer])
+                prices = np.array([data[1] for data in video_buffer])
+                    
+                self.network.train_step(videos, prices, self.learning_rate, self.epochs)
+                print("Trained {} videos so far! {}% of the data set".format((numImgs - len(images)), ( 1 - (len(images)/numImgs)  ) )) 
+                video_buffer.clear()
+                self.network.save_model("current.model")
+
+        self.network.save_model("end.model")
 
 if __name__ == '__main__':
     training_pipeline = TrainingPipeline()
