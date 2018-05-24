@@ -20,7 +20,7 @@ FETCH_URL = "https://poloniex.com/public?command=returnChartData&currencyPair=%s
 DATA_DIR = "data"
 COLUMNS = ["date","high","low","open","close","volume","quoteVolume","weightedAverage"]
 
-def get_data(pair):
+def getData(pair):
     datafile = os.path.join(DATA_DIR, pair+".csv")
     timefile = os.path.join(DATA_DIR, pair)
 
@@ -60,38 +60,40 @@ def get_data(pair):
     print("{0}Finish.{1}".format('\033[92m', '\033[0m'))
     time.sleep(60)     # Sleep for 60 seconds to prevent spamming the public API server (lowering this could cause an HTTP 500 error)
 
-
-def main():
-    # 1. Check to make sure currency pair file is given
-    if (len(sys.argv)) != 2:
-        print("Need to provide one argument, the CSV file of currency pairs!")
-        sys.exit(0)
-
-    # 2. Read given currency pairs file
-    print("Currency pairs for data to be fetched: ")
-    cp_df = pd.read_csv(sys.argv[1])
-    given_pairs = [pair for pair in cp_df.columns]
-    
-    # 3. Get all current supported pairs from Poloniex
+def getPairs(pairs):
+    # Get list of valid BTC pairs
     df = pd.read_json("https://poloniex.com/public?command=return24hVolume")
     valid_btc_pairs = [pair for pair in df.columns if pair.startswith('BTC')]
     
-    # 4. Make sure each given pair is valid
-    for pair in given_pairs:
+    # Make sure each given pair is valid
+    for pair in pairs:
         if pair not in valid_btc_pairs:
-            given_pairs.remove(pair)
+            pairs.remove(pair)
             print("\t{0:10} : {1}INVALID (removed){2}".format(pair,'\033[91m','\033[0m'))
         else:
             print("\t{0:10} : {1}VALID{2}".format(pair, '\033[92m', '\033[0m'))
     
-    # 5. If a "data" directory does not exist, create it
+    for pair in pairs:
+        getData(pair)
+        time.sleep(2)
+
+def main():
+    # Check to make sure currency pair file is given
+    if (len(sys.argv)) != 2:
+        print("Need to provide one argument, the CSV file of currency pairs!")
+        sys.exit(0)
+
+    # Read given currency pairs file
+    print("Currency pairs for data to be fetched: ")
+    cp_df = pd.read_csv(sys.argv[1])
+    given_pairs = [pair for pair in cp_df.columns]
+        
+    # If a "data" directory does not exist, create it
     if not os.path.exists(DATA_DIR):
         os.mkdir(DATA_DIR)
 
-    # 6. Fetch data from Poloniex for each pair
-    for pair in given_pairs:
-        get_data(pair)
-        time.sleep(2)
+    # Get data for each pair
+    getPairs(given_pairs)
 
 if __name__ == '__main__':
     main()

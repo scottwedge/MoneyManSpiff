@@ -8,7 +8,7 @@ Author: Parker Timmerman
 
 from keras.engine.topology import Input
 from keras.engine.training import Model
-from keras.layers import Dense, Conv3D, MaxPooling2D
+from keras.layers import Dense, Conv3D, MaxPooling2D, LSTM, TimeDistributed
 from keras.layers.core import Flatten
 from keras.regularizers import l2
 from keras.optimizers import Adam
@@ -54,8 +54,7 @@ class Network():
 
         k_s = (3,3,3)                     # Kernel Size
 
-        # Convolutional Layers
-        # Maybe make some layers TimeDistributed(Conv2D(...)) ?
+        ## Convolutional Layers
         network = Conv3D(filters = 32,
                 kernel_size = k_s,
                 padding = "same",
@@ -69,47 +68,50 @@ class Network():
                 activation = "relu",
                 kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 64,
+                kernel_size = k_s,
                 padding = "same",
                 data_format = "channels_first",
                 activation = "relu",
                 kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 128,
+                kernel_size = k_s,
                 padding = "same",
                 data_format = "channels_first",
                 activation = "relu",
                 kernel_regularizer = l2(self.l2_const))(network)
         network = Conv3D(filters = 128,
+                kernel_size = k_s,
                 padding = "same",
                 data_format = "channels_first",
                 activation = "relu",
                 kernel_regularizer = l2(self.l2_const))(network)
 
         ## LSTM Layers
-        network = LSTM(units = 256,
-                kernel_regularizer = l2(self.l2_const))(network)
+        network = TimeDistributed(LSTM(units = 256,
+                kernel_regularizer = l2(self.l2_const)))(network)
         network = LSTM(units = 256,
                 kernel_regularizer = l2(self.l2_const))(network)
 
         ## Output
-        network = Dense(units = 1,
-                activation = linear)
+        self.network = Dense(units = 1,
+                activation = 'linear')(network)
 
-        self.model = Model(inputs = input_x, outputs = network)
+        self.model = Model(inputs = input_x, outputs = self.network)
 
     def setup_trainer(self):
         """ Compile the network and setup for training """
         
         optimizer = Adam()
         loss = 'mean_squared_error'
-        self.model.compile(optimizer  = optimizer, loss = loss)
+        self.model.compile(optimizer  = optimizer, loss = loss, metrics = ['accuracy'])
         
-        def train(window, price, learning_rate):
+        def train_step(window, price, learning_rate):
             K.set_value(self.model.optimizer.lr, learning_rate)
             self.model.fit(x = window,
                     y = price,
                     batch_size = 1,
                     verbose = 2)
-        self.train = train
+        self.train_step = train_step
 
     def get_weights(self):
         """ Returns the weights of the network """
