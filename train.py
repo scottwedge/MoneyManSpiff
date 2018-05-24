@@ -12,6 +12,7 @@ import getData
 import pandas as pd
 import numpy as np
 
+from collections import deque
 from network import Network
 
 class TrainingPipeline():
@@ -48,9 +49,9 @@ class TrainingPipeline():
         col = move % height
         return [row, col]
 
-    def prepData(self, pairs, fields):
+    def buildImages(self, pairs, fields):
         """ Turn the CSV data into "images" which we can later build videos out of and train the network with """
-        images = []
+        images = deque()
         width = height = int(math.sqrt(len(pairs) + 1))
         channels = len(fields)
 
@@ -62,7 +63,7 @@ class TrainingPipeline():
         start_time = max([int(df['date'][0]) for df in data_frames])
         end_time = min([int(open("data/{}".format(pair)).readline()) for pair in pairs])
 
-        for time in range(1464066600, end_time + 1, 300):
+        for time in range(1464066600, 1464066600 + (100 * 300), 300):
             image = np.zeros((channels, width, height), dtype=float)
             for idx, df in enumerate(data_frames):
                 row = df.loc[df['date'] == time]
@@ -72,9 +73,7 @@ class TrainingPipeline():
                         image[channel][r][c] = row[field]
                     else:
                         image[channel][r][c] = 0
-            images.append(image)
-            print(time)
-            print(image)
+            images.append((time,image))
         return images
 
     def run(self):
@@ -91,7 +90,28 @@ class TrainingPipeline():
         self.verifyData(given_pairs) 
 
         # Build a feed of "images" that we can feed to the network
-        images = self.prepData(given_pairs, ['volume', 'weightedAverage'])
+        images = self.buildImages(given_pairs, ['volume', 'quoteVolume', 'weightedAverage'])
+
+        video_buffer = []
+
+        # Initialize the video with the first 48 images
+        video = deque()
+        for i in range(0, 48):
+            video.append(images.popleft()[1])
+        price = images[11][1][2][0][0               # This is the price of ETH an hour ahead]
+
+        video_buffer.append((video, price))
+
+        # Pop off the first (earliest) frame from the video, and push on the next one from images
+        while images:
+            video.popleft()
+            video.append(images.popleft())
+            price = images[11][1][2][0][0]
+
+            video_buffer.append((video, price))
+
+            if (len(video_buffer) >= batch_size):
+                
 
 if __name__ == '__main__':
     training_pipeline = TrainingPipeline()
