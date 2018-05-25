@@ -9,7 +9,7 @@ Author: Parker Timmerman
 from keras.engine.topology import Input
 from keras.engine.training import Model
 from keras.layers import Dense, Conv3D, MaxPooling2D, LSTM, TimeDistributed
-from keras.layers.core import Flatten
+from keras.layers.core import Flatten, Reshape
 from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.utils import np_utils, plot_model
@@ -86,9 +86,17 @@ class Network():
                 activation = "relu",
                 kernel_regularizer = l2(self.l2_const))(network)
 
+        network = Reshape((48, -1))(network)
+
+        #network = TimeDistributed(Dense(units = 1024,
+        #        activation = 'relu',
+        #        kernel_regularizer = l2(self.l2_const)))(network)
+
+
         ## LSTM Layers
-        network = TimeDistributed(LSTM(units = 256,
-                kernel_regularizer = l2(self.l2_const)))(network)
+        network = LSTM(units = 256,
+                kernel_regularizer = l2(self.l2_const),
+                return_sequences = True)(network)
         network = LSTM(units = 256,
                 kernel_regularizer = l2(self.l2_const))(network)
 

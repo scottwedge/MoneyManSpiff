@@ -23,8 +23,8 @@ class TrainingPipeline():
         self.lr_multiplier = 1.0                        # Dynamically adjust learning rate using Kullbeck-Liebler
         self.kl_targ = 0.02
 
-        self.batch_size = 16
-        self.epochs = 32
+        self.batch_size = 64
+        self.epochs = 20
 
         if initial_model:
             self.network = Network(model_file = initial_model)
@@ -63,7 +63,7 @@ class TrainingPipeline():
         start_time = max([int(df['date'][0]) for df in data_frames])
         end_time = min([int(open("data/{}".format(pair)).readline()) for pair in pairs])
 
-        for time in range(1464066600, 1464066600 + (300 * 500), 300):
+        for time in range(1464066600, 1464066600 + end_time, 300):
             if time % (300 * 5000) == 0:
                 print("{} : {}".format(time, end_time))
 
@@ -121,7 +121,7 @@ class TrainingPipeline():
                 prices = np.array([data[1] for data in video_buffer])
                     
                 self.network.train_step(videos, prices, self.learning_rate, self.epochs)
-                print("Trained {} videos so far! {}% of the data set".format((numImgs - len(images)), ( 1 - (len(images)/numImgs)  ) )) 
+                print("Trained {} videos so far! {}% of the data set".format((numImgs - len(images)), (( 1 - (len(images)/numImgs)) *100 ) )) 
                 video_buffer.clear()
                 self.network.save_model("current.model")
 
