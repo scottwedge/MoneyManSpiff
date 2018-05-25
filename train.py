@@ -63,7 +63,7 @@ class TrainingPipeline():
         start_time = max([int(df['date'][0]) for df in data_frames])
         end_time = min([int(open("data/{}".format(pair)).readline()) for pair in pairs])
 
-        for time in range(1464066600, 1464066600 + end_time, 300):
+        for time in range(1464066600, end_time, 300):
             if time % (300 * 5000) == 0:
                 print("{} : {}".format(time, end_time))
 
