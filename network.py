@@ -53,6 +53,7 @@ class Network():
         input_x = network = Input((3, 6, 6, 48))
 
         k_s = (3,3,3)                     # Kernel Size
+        p_s = (2,2,2)                     # Pooling Size
 
         ## Convolutional Layers
         network = Conv3D(filters = 32,

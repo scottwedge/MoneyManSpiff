@@ -63,7 +63,7 @@ def getData(pair):
 def getPairs(pairs):
     # Get list of valid BTC pairs
     df = pd.read_json("https://poloniex.com/public?command=return24hVolume")
-    valid_btc_pairs = [pair for pair in df.columns if pair.startswith('BTC')]
+    valid_btc_pairs = [pair for pair in df.columns if pair.startswith('BTC') or pair.startswith('USDT')]
     
     # Make sure each given pair is valid
     for pair in pairs:
