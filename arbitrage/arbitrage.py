@@ -9,11 +9,12 @@ Author: Parker Timmerman
 from requests.exceptions import HTTPError
 from graph import Graph
 from math import log
+from time import sleep
 import krakenex
 import pprint
 
 ASSETS = ['XBT', 'LTC', 'XDG', 'REP', 'XRP', 'XLM', 'ETH', 'ETC', 'ICN', 'USDT', 'DASH', 'ZEC', 'XMR', 'GNO', 'EOS', 'BCH', 'MLN', 'EUR', 'USD', 'JPY', 'CAD', 'GBP']
-ASSET_PAIRS = ['BCH/EUR', 'BCH/USD', 'BCH/XBT', 'DASH/EUR', 'DASH/USD', 'DASH/XBT', 'EOS/ETH', 'EOS/EUR', 'EOS/USD', 'EOS/XBT', 'GNO/ETH', 'GNO/EUR', 'GNO/USD', 'GNO/XBT', 'USDT/USD', 'ETC/ETH', 'ETC/XBT', 'ETC/EUR', 'ETC/USD', 'ETH/XBT', 'ETH/CAD', 'ETH/EUR', 'ETH/GBP', 'ETH/JPY', 'ETH/USD', 'ICN/ETH', 'ICN/XBT', 'LTC/XBT', 'LTC/EUR', 'LTC/USD', 'MLN/ETH', 'MLN/XBT', 'REP/ETH', 'REP/XBT', 'REP/EUR', 'REP/USD', 'XBT/CAD', 'XBT/EUR', 'XBT/GBP', 'XBT/JPY', 'XBT/USD', 'XDG/XBT', 'XLM/XBT', 'XLM/EUR', 'XLM/USD', 'XMR/XBT', 'XMR/EUR', 'XMR/USD', 'XRP/XBT', 'XRP/CAD', 'XRP/EUR', 'XRP/JPY', 'XRP/USD', 'ZEC/XBT', 'ZEC/EUR', 'ZEC/JPY', 'ZEC/USD']
+ASSET_PAIRS = ['BCH/EUR', 'BCH/USD', 'BCH/XBT', 'DASH/EUR', 'DASH/USD', 'DASH/XBT', 'EOS/ETH', 'EOS/EUR', 'EOS/USD', 'EOS/XBT', 'GNO/ETH', 'GNO/EUR', 'GNO/USD', 'GNO/XBT', 'ETC/ETH', 'ETC/XBT', 'ETC/EUR', 'ETC/USD', 'ETH/XBT', 'ETH/CAD', 'ETH/EUR', 'ETH/GBP', 'ETH/JPY', 'ETH/USD', 'ICN/ETH', 'ICN/XBT', 'LTC/XBT', 'LTC/EUR', 'LTC/USD', 'MLN/ETH', 'MLN/XBT', 'REP/ETH', 'REP/XBT', 'REP/EUR', 'REP/USD', 'XBT/CAD', 'XBT/EUR', 'XBT/GBP', 'XBT/JPY', 'XBT/USD', 'XDG/XBT', 'XLM/XBT', 'XLM/EUR', 'XLM/USD', 'XMR/XBT', 'XMR/EUR', 'XMR/USD', 'XRP/XBT', 'XRP/CAD', 'XRP/EUR', 'XRP/JPY', 'XRP/USD', 'ZEC/XBT', 'ZEC/EUR', 'ZEC/JPY', 'ZEC/USD']
 ALT_NAME_TRANS = {'BCHEUR': ('BCH', 'EUR'),
                     'BCHUSD': ('BCH', 'USD'),
                     'BCHXBT': ('BCH', 'XBT'),
@@ -91,7 +92,6 @@ class Pipeline():
 
         # Take the asset pairs, remove the '/' and make the list comma seperated so you can ask the API for the data
         self.TICKER_PAIRS = ",".join([pair.replace('/', '') for pair in ASSET_PAIRS])
-        print(self.TICKER_PAIRS)
 
     def initGraph(self):
         """ Initialize the graph's nodes, and edges. Set all edge weights to 0 """
@@ -123,13 +123,28 @@ class Pipeline():
                 self.G.updateEdge(a1, a2, w)
                 self.G.updateEdge(a2, a1, (1/w))
 
+    def simulateArbitrage(self, path):
+        money = 1000
+        while len(path) > 1:
+            a = path[0]
+            b = path[1]
+            path.remove(a)
+            money = money * -(self.G.getWeight(a, b) ** 2)
+        print(money)
+
     def run(self):
         # Initialize graph
         self.initGraph()
-        data = self.getTickerData(self.TICKER_PAIRS)
-        self.updateGraph(data)
+        
+        while True:
+            data = self.getTickerData(self.TICKER_PAIRS)
+            self.updateGraph(data)
+            path = self.G.BellmanFord('XBT')
+            print(path)
+            self.simulateArbitrage(path)
+            sleep(5)
 
-        self.G.print()
+        #self.G.print()
 
 if __name__ == '__main__':
     p = Pipeline()

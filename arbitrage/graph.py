@@ -53,6 +53,14 @@ class Graph():
         """ Returns a list of all the edges in the graph, represented as tuples """
         return list([(src, dest, self.G[src][dest]) for src in self.G.keys() for dest in self.G[src].keys()])
 
+    def getWeight(self, a, b):
+        """ Get the weight of an edge from a to b """
+        if b not in self.G[a]:
+            print("Edge between {0} and {1} does not exist!".format(a, b))
+            return
+        else:
+            return self.G[a][b]
+
     def print(self):
         """ String representation of the graph """
         for src in self.G.keys():
@@ -60,13 +68,41 @@ class Graph():
             for dest in self.G[src].keys():
                 print("\t{0} -- weight: {1} --> {2}".format(src, self.G[src][dest], dest))
 
+    def traceback(self, start, preds):
+        traveled = {node: False for node in self.G.keys()}
+        path = []
+
+        def aux(start, traveled, preds, path):
+            if traveled[start] == True:
+                path.append(start)
+                return path
+            else:
+                traveled[start] = True
+                path.append(start)
+                return aux(preds[start], traveled, preds, path)
+
+        return aux(start, traveled, preds, path)
+
     def BellmanFord(self, src):
         """ Perform Bellman-Ford on graph and test for negative cycle """
 
         # Initalize distance to all nodes to be infinity, then set distance to souce node to be 0
         dist = {node: float('Inf') for node in self.G.keys()}
+        pred = {node: None for node in self.G.keys()}
         dist[src] = 0
+        num_nodes = len(self.G.keys())
 
-
+        # Find shortest path
+        for i in range (num_nodes - 1):
+            for u, v, w, in self.getEdges():
+                if dist[u] != float("Inf") and dist[u] + w < dist[v]:
+                    dist[v] = dist[u] + w
+                    pred[v] = u
+        
+        # Detect negative cycle
+        for u, v, w in self.getEdges():
+            if dist[u] != float("Inf") and dist[u] + w < dist[v]:
+                print("Graph contains a negative cycle!")
+                return self.traceback(v, pred)
 
 

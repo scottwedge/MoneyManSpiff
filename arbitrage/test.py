@@ -40,3 +40,5 @@ G.addEdge('BTC', 'EUR', 5000)
 G.print()
 print(G.getNodes())
 print(G.getEdges())
+
+print("Edge weight from USD to EUR = {}".format(G.getWeight('USD', 'EUR')))
