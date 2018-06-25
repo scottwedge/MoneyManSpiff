@@ -5,6 +5,7 @@ At it's core is a 2D Dictionary/Dictionary of Dictionaries
 Author: Parker Timmerman
 """
 from typing import List, Tuple
+from decimal import *
 
 class Graph():
     """ A graph data structure represented as a 2D Dictionary"""
@@ -75,7 +76,7 @@ class Graph():
         def aux(start, traveled, preds, path):
             if traveled[start] == True:
                 path.append(start)
-                return path
+                return list(reversed(path))
             else:
                 traveled[start] = True
                 path.append(start)
@@ -87,7 +88,7 @@ class Graph():
         """ Perform Bellman-Ford on graph and test for negative cycle """
 
         # Initalize distance to all nodes to be infinity, then set distance to souce node to be 0
-        dist = {node: float('Inf') for node in self.G.keys()}
+        dist = {node: Decimal('Infinity') for node in self.G.keys()}
         pred = {node: None for node in self.G.keys()}
         dist[src] = 0
         num_nodes = len(self.G.keys())
@@ -95,13 +96,13 @@ class Graph():
         # Find shortest path
         for i in range (num_nodes - 1):
             for u, v, w, in self.getEdges():
-                if dist[u] != float("Inf") and dist[u] + w < dist[v]:
+                if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0000') < dist[v]:
                     dist[v] = dist[u] + w
                     pred[v] = u
         
         # Detect negative cycle
         for u, v, w in self.getEdges():
-            if dist[u] != float("Inf") and dist[u] + w < dist[v]:
+            if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0000') < dist[v]:
                 print("Graph contains a negative cycle!")
                 return self.traceback(v, pred)
 

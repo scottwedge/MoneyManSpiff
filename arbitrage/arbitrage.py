@@ -10,6 +10,7 @@ from requests.exceptions import HTTPError
 from graph import Graph
 from math import log
 from time import sleep
+from decimal import *
 import krakenex
 import pprint
 
@@ -89,6 +90,8 @@ class Pipeline():
         """ Initialize the graph, open a connection to the API, and build Ticker string for querying to the API """
         self.G = Graph()
         self.K = krakenex.API()
+        getcontext().prec = 6                   # Set Decimal precision to 6 place
+        getcontext().traps[FloatOperation] = True
 
         # Take the asset pairs, remove the '/' and make the list comma seperated so you can ask the API for the data
         self.TICKER_PAIRS = ",".join([pair.replace('/', '') for pair in ASSET_PAIRS])
@@ -119,18 +122,33 @@ class Pipeline():
             name = item[0]
             if ALT_NAME_TRANS.get(name):
                 a1, a2 = ALT_NAME_TRANS.get(name)
-                w = -log(float(item[1]['a'][0]), 2)
-                self.G.updateEdge(a1, a2, w)
-                self.G.updateEdge(a2, a1, (1/w))
+                ask = Decimal(item[1]['a'][0])
+                bid = Decimal(item[1]['b'][0])
+                w1 = -(bid.log10() / Decimal(2).log10())                   # weight from a1 to a2
+                w2 = -((1/ask).log10() / Decimal(2).log10())               # weight from a2 to a1
+                self.G.updateEdge(a1, a2, w1)
+                self.G.updateEdge(a2, a1, w2)
 
     def simulateArbitrage(self, path):
-        money = 1000
+        start = path[0]
+        while not path[-1] == start:
+            path.remove(path[-1])
+        
+        sum = 0
+        product = 1
         while len(path) > 1:
             a = path[0]
             b = path[1]
             path.remove(a)
-            money = money * -(self.G.getWeight(a, b) ** 2)
-        print(money)
+            weight = self.G.getWeight(a, b)
+            sum += weight
+            conversion = (2 ** (-weight))
+            product = product * conversion
+            print("{0} -- {1} --> {2}".format(a, weight, b))
+        if sum < Decimal('0.0'):                # Good
+            print("{0}Sum of cycle: {1}\nProduct of exhange rates: {2}{3}".format('\033[92m',sum,product,'\033[0m'))
+        else:                                   # Bad
+            print("{0}Sum of cycle: {1}{2}".format('\033[91m',sum,'\033[0m'))
 
     def run(self):
         # Initialize graph
@@ -139,10 +157,11 @@ class Pipeline():
         while True:
             data = self.getTickerData(self.TICKER_PAIRS)
             self.updateGraph(data)
-            path = self.G.BellmanFord('XBT')
+            path = self.G.BellmanFord('USD')
             print(path)
-            self.simulateArbitrage(path)
-            sleep(5)
+            if path:
+                self.simulateArbitrage(path)
+            sleep(3)
 
         #self.G.print()
 
