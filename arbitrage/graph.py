@@ -7,6 +7,39 @@ Author: Parker Timmerman
 from typing import List, Tuple
 from decimal import *
 
+class Edge():
+    """ An edge object to be used for arbitrage """
+
+    def __init__(self, xrate, weight, vol, vol_sym):
+        self.xrate = xrate                      # exchange rate from the market, generally bid or 1/ask
+        self.weight = weight                    # edge weight used for neg cycle detection, -log(xrate)
+        self.vol = vol                          # volume associated with bid or ask price
+        self.vol_sym = vol_sym                  # currency which the volume is in terms of
+
+    # Getters and Setters
+    def getExchangeRate(self):
+        return self.xrate
+    def setExchangeRate(self, xrate):           # Note: Exchange rate and weight should always be changed together
+        self.xrate = xrate                      # because weight is a derivative of exhange rate
+
+    def getWeight(self):
+        return self.weight
+    def setWeight(self, weight):
+        self.weight = weight
+    
+    def getVolume(self):
+        return vol
+    def setVolume(self, vol):
+        self.vol = vol
+
+    def getVolumeSymbol(self):
+        return vol_sym
+    def setVolumeSymbol(self, vol_sym):
+        self.vol_sym = vol_sym
+    
+    def Volume(self):
+        return (vol, vol_sym)
+
 class Graph():
     """ A graph data structure represented as a 2D Dictionary"""
 
@@ -22,7 +55,7 @@ class Graph():
             self.G[name] = {}
         return True
 
-    def addEdge(self, src, dest, weight) -> bool:
+    def addEdge(self, src, dest, xrate, weight, vol, vol_sym) -> bool:
         """ Add an edge to the graph """
         if src not in self.G:
             print("Source node ({}) does not exist!".format(src))
@@ -31,10 +64,10 @@ class Graph():
             print("Destination node ({}) does not exist!".format(dest))
             return False
 
-        self.G[src][dest] = weight                      # Src and dest must exist so add the edge
+        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym)           # Src and dest must exist so add the edge
         return True
 
-    def updateEdge(self, src, dest, weight) -> bool:
+    def updateEdge(self, src, dest, xrate, weight, vol, vol_sym) -> bool:
         """ Update an edge weight between two nodes """
         if src not in self.G:
             print("Source node ({}) does not exist!".format(src))
@@ -43,8 +76,16 @@ class Graph():
             print("Destination node ({}) does not exist!".format(dest))
             return False
         
-        self.G[src][dest] = weight
+        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym)
         return True
+    
+    def getEdge(self, a, b):
+        """ Get the edge from a to b """
+        if b not in self.G[a]:
+            print("Edge between {0} and {1} does not exist!".format(a, b))
+            return
+        else:
+            return self.G[a][b]
 
     def getNodes(self) -> List[str]:
         """" Returns a list of all the nodes in the graph """
@@ -54,14 +95,6 @@ class Graph():
         """ Returns a list of all the edges in the graph, represented as tuples """
         return list([(src, dest, self.G[src][dest]) for src in self.G.keys() for dest in self.G[src].keys()])
 
-    def getWeight(self, a, b):
-        """ Get the weight of an edge from a to b """
-        if b not in self.G[a]:
-            print("Edge between {0} and {1} does not exist!".format(a, b))
-            return
-        else:
-            return self.G[a][b]
-
     def print(self):
         """ String representation of the graph """
         for src in self.G.keys():
@@ -70,6 +103,7 @@ class Graph():
                 print("\t{0} -- weight: {1} --> {2}".format(src, self.G[src][dest], dest))
 
     def traceback(self, start, preds):
+        """ Given a starting node and a dictionary of predecessors, performs a traceback to ID a negative loop """
         traveled = {node: False for node in self.G.keys()}
         path = []
 
@@ -95,15 +129,16 @@ class Graph():
 
         # Find shortest path
         for i in range (num_nodes - 1):
-            for u, v, w, in self.getEdges():
-                if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0000') < dist[v]:
+            for u, v, edge, in self.getEdges():
+                w = edge.getWeight()
+                if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0004') < dist[v]:
                     dist[v] = dist[u] + w
                     pred[v] = u
-        
+       
         # Detect negative cycle
-        for u, v, w in self.getEdges():
-            if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0000') < dist[v]:
+        for u, v, edge in self.getEdges():
+            w = edge.getWeight()
+            if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0004') < dist[v]:
                 print("Graph contains a negative cycle!")
                 return self.traceback(v, pred)
-
 

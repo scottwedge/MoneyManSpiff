@@ -1,5 +1,5 @@
 """
-Core python script for Money Man Spiff's arbitrage
+Core python script for Money Man Spiff's arbitrage program
 
 Uses the Kraken Exchange API to get data, and the Graph class to detect negative cycles
 
@@ -7,7 +7,7 @@ Author: Parker Timmerman
 """
 
 from requests.exceptions import HTTPError
-from graph import Graph
+from graph import Graph, Edge
 from math import log
 from time import sleep
 from decimal import *
@@ -97,7 +97,7 @@ class Pipeline():
         self.TICKER_PAIRS = ",".join([pair.replace('/', '') for pair in ASSET_PAIRS])
 
     def initGraph(self):
-        """ Initialize the graph's nodes, and edges. Set all edge weights to 0 """
+        """ Initialize the graph's nodes, and edges. Set all edge values to 0 """
         # Initialize graph with nodes
         for asset in ASSETS:
             self.G.addNode(asset)
@@ -105,8 +105,8 @@ class Pipeline():
         # Initialize graph with weights of 0
         for pair in ASSET_PAIRS:
             a1, a2 = splitPair(pair, DELM)
-            self.G.addEdge(a1, a2, 0)
-            self.G.addEdge(a2, a1, 0)
+            self.G.addEdge(a1, a2, 0, 0, 0, 0)
+            self.G.addEdge(a2, a1, 0, 0, 0, 0)
 
     def getTickerData(self, pairs):
         """ Given a comma seperated list of pairs, get the ticker information from the API """
@@ -122,28 +122,39 @@ class Pipeline():
             name = item[0]
             if ALT_NAME_TRANS.get(name):
                 a1, a2 = ALT_NAME_TRANS.get(name)
-                ask = Decimal(item[1]['a'][0])
-                bid = Decimal(item[1]['b'][0])
-                w1 = -(bid.log10() / Decimal(2).log10())                   # weight from a1 to a2
-                w2 = -((1/ask).log10() / Decimal(2).log10())               # weight from a2 to a1
-                self.G.updateEdge(a1, a2, w1)
-                self.G.updateEdge(a2, a1, w2)
+                
+                ask_price = Decimal(item[1]['a'][0])
+                ask_vol = Decimal(item[1]['a'][2])
 
-    def simulateArbitrage(self, path):
+                bid_price = Decimal(item[1]['b'][0])
+                bid_vol = Decimal(item[1]['b'][2])
+
+                w1 = -(bid_price.log10() / Decimal(2).log10())                   # weight from a1 to a2
+                w2 = -((1/ask_price).log10() / Decimal(2).log10())               # weight from a2 to a1
+                self.G.updateEdge(a1, a2, bid_price, w1, bid_vol, a2)            # volume is always in terms of second currency
+                self.G.updateEdge(a2, a1, 1/ask_price, w2, ask_vol, a2)
+
+    def checkArbitrage(self, path):
+        """ Given a path, check to make sure it results in an arbitrage """
         start = path[0]
-        while not path[-1] == start:
+        while not path[-1] == start:            # remove unnecessary currencies from path
             path.remove(path[-1])
-        
+        print(path)
+
         sum = 0
         product = 1
         while len(path) > 1:
             a = path[0]
             b = path[1]
             path.remove(a)
-            weight = self.G.getWeight(a, b)
+            edge = self.G.getEdge(a, b)
+
+            weight = edge.getWeight()           # get the edge weight to verify sum of path < 0
             sum += weight
-            conversion = (2 ** (-weight))
-            product = product * conversion
+            
+            xrate = edge.getExchangeRate()      # multiply all exhange rates to verify product > 1
+            product = product * xrate
+
             print("{0} -- {1} --> {2}".format(a, weight, b))
         if sum < Decimal('0.0'):                # Good
             print("{0}Sum of cycle: {1}\nProduct of exhange rates: {2}{3}".format('\033[92m',sum,product,'\033[0m'))
@@ -157,10 +168,9 @@ class Pipeline():
         while True:
             data = self.getTickerData(self.TICKER_PAIRS)
             self.updateGraph(data)
-            path = self.G.BellmanFord('USD')
-            print(path)
+            path = self.G.BellmanFord('XBT')
             if path:
-                self.simulateArbitrage(path)
+                self.checkArbitrage(path)
             sleep(3)
 
         #self.G.print()

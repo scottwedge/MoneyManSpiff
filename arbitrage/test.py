@@ -6,8 +6,8 @@ import pandas as pd
 
 k = krakenex.API()
 
-#try:
-#    resp = k.query_public('AssetPairs')
+try:
+    resp = k.query_public('AssetPairs')
 #    asset_pairs = resp['result']
 #    asset_pairs = list([asset_pair for asset_pair in asset_pairs.keys() if not '.d' in asset_pair])
 #    print(asset_pairs)
@@ -19,10 +19,10 @@ k = krakenex.API()
 #    if resp1['error'] == []:
 #        pprint.pprint(resp1)
 #    
-#    resp2 = k.query_public('Ticker', {'pair': resp['result']['XETCZUSD']['altname']})
-#    pprint.pprint(resp2)
-#except HTTPError as e:
-#    print(str(e))
+    resp2 = k.query_public('Ticker', {'pair': 'XETHZUSD'})
+    pprint.pprint(resp2)
+except HTTPError as e:
+    print(str(e))
 
 G = Graph()
 
