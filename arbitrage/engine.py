@@ -22,5 +22,6 @@ class ArbitrageEngine():
 
         bal = K.query_private('Balance')        # current account balance
         vol_sym = path[0]                       # want to get all of the volumes in terms of the first currency
-        vols = []                               # volumes of all exchanges
+        vols = []                               # volumes of all pairs
+
         
