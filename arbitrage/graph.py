@@ -1,6 +1,6 @@
 """
 Graph objects used for Money Man Spiff's arbitrage engine
-At it's core is a 2D Dictionary/Dictionary of Dictionaries
+At it's core is a 2D Dictionary aka Dictionary of Dictionaries
 
 Author: Parker Timmerman
 """
@@ -10,11 +10,13 @@ from decimal import *
 class Edge():
     """ An edge object to be used for arbitrage """
 
-    def __init__(self, xrate, weight, vol, vol_sym):
+    def __init__(self, xrate, weight, vol, vol_sym, pair, ab):
         self.xrate = xrate                      # exchange rate from the market, generally bid or 1/ask
         self.weight = weight                    # edge weight used for neg cycle detection, -log(xrate)
         self.vol = vol                          # volume associated with bid or ask price
         self.vol_sym = vol_sym                  # currency which the volume is in terms of
+        self.pair = pair
+        self.ab = ab
 
     # Getters and Setters
     def getExchangeRate(self):
@@ -28,15 +30,25 @@ class Edge():
         self.weight = weight
     
     def getVolume(self):
-        return vol
+        return self.vol
     def setVolume(self, vol):
         self.vol = vol
 
     def getVolumeSymbol(self):
-        return vol_sym
+        return self.vol_sym
     def setVolumeSymbol(self, vol_sym):
         self.vol_sym = vol_sym
     
+    def getPair(self):
+        return self.pair
+    def setPair(self, pair):
+        self.pair = pair
+
+    def getAskOrBid(self):
+        return self.ab
+    def setAskOrBuy(self, ab):
+        self.ab = ab
+
     def Volume(self):
         return (vol, vol_sym)
 
@@ -55,7 +67,7 @@ class Graph():
             self.G[name] = {}
         return True
 
-    def addEdge(self, src, dest, xrate, weight, vol, vol_sym) -> bool:
+    def addEdge(self, src, dest, xrate, weight, vol, vol_sym, pair, ab) -> bool:
         """ Add an edge to the graph """
         if src not in self.G:
             print("Source node ({}) does not exist!".format(src))
@@ -64,10 +76,10 @@ class Graph():
             print("Destination node ({}) does not exist!".format(dest))
             return False
 
-        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym)           # Src and dest must exist so add the edge
+        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab)           # Src and dest must exist so add the edge
         return True
 
-    def updateEdge(self, src, dest, xrate, weight, vol, vol_sym) -> bool:
+    def updateEdge(self, src, dest, xrate, weight, vol, vol_sym, pair, ab) -> bool:
         """ Update an edge weight between two nodes """
         if src not in self.G:
             print("Source node ({}) does not exist!".format(src))
@@ -76,7 +88,7 @@ class Graph():
             print("Destination node ({}) does not exist!".format(dest))
             return False
         
-        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym)
+        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab)
         return True
     
     def getEdge(self, a, b):

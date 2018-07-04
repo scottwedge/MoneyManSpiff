@@ -8,6 +8,7 @@ Author: Parker Timmerman
 
 from requests.exceptions import HTTPError
 from graph import Graph, Edge
+from engine import ArbitrageEngine
 from math import log
 from time import sleep
 from decimal import *
@@ -90,6 +91,7 @@ class Pipeline():
         """ Initialize the graph, open a connection to the API, and build Ticker string for querying to the API """
         self.G = Graph()
         self.K = krakenex.API()
+        self.E = ArbitrageEngine()
         getcontext().prec = 6                   # Set Decimal precision to 6 place
         getcontext().traps[FloatOperation] = True
 
@@ -105,8 +107,8 @@ class Pipeline():
         # Initialize graph with weights of 0
         for pair in ASSET_PAIRS:
             a1, a2 = splitPair(pair, DELM)
-            self.G.addEdge(a1, a2, 0, 0, 0, 0)
-            self.G.addEdge(a2, a1, 0, 0, 0, 0)
+            self.G.addEdge(a1, a2, 0, 0, 0, 0, '', '')      # Constructs an edge(src, dest, xrate, weight, vol, vol_sym)
+            self.G.addEdge(a2, a1, 0, 0, 0, 0, '', '')
 
     def getTickerData(self, pairs):
         """ Given a comma seperated list of pairs, get the ticker information from the API """
@@ -129,10 +131,10 @@ class Pipeline():
                 bid_price = Decimal(item[1]['b'][0])
                 bid_vol = Decimal(item[1]['b'][2])
 
-                w1 = -(bid_price.log10() / Decimal(2).log10())                   # weight from a1 to a2
-                w2 = -((1/ask_price).log10() / Decimal(2).log10())               # weight from a2 to a1
-                self.G.updateEdge(a1, a2, bid_price, w1, bid_vol, a2)            # volume is always in terms of second currency
-                self.G.updateEdge(a2, a1, 1/ask_price, w2, ask_vol, a2)
+                w1 = -(bid_price.log10() / Decimal(2).log10())                      # weight from a1 to a2
+                w2 = -((1/ask_price).log10() / Decimal(2).log10())                  # weight from a2 to a1
+                self.G.updateEdge(a1, a2, bid_price, w1, bid_vol, a1, name, 'bid') 
+                self.G.updateEdge(a2, a1, 1/ask_price, w2, ask_vol, a1, name, 'ask')
 
     def checkArbitrage(self, path):
         """ Given a path, check to make sure it results in an arbitrage """
@@ -143,10 +145,9 @@ class Pipeline():
 
         sum = 0
         product = 1
-        while len(path) > 1:
-            a = path[0]
-            b = path[1]
-            path.remove(a)
+        for idx in range(len(path) - 1):
+            a = path[idx]
+            b = path[idx + 1]
             edge = self.G.getEdge(a, b)
 
             weight = edge.getWeight()           # get the edge weight to verify sum of path < 0
@@ -171,8 +172,10 @@ class Pipeline():
             path = self.G.BellmanFord('XBT')
             if path:
                 self.checkArbitrage(path)
+                self.E.exploitArbitrage(self.G, path)
+            print() 
             sleep(3)
-
+            
         #self.G.print()
 
 if __name__ == '__main__':
