@@ -50,8 +50,8 @@ class ArbitrageEngine():
         e = graph.getEdge(a1, a2) 
         if e is None:                               # If the edge doesnt exist, convert from a1 --> BTC ---> a2
             print("Had to convert to BTC")
-            e1 = graph.getEdge(a1, 'XBT')
-            e2 = graph.getEdge('XBT', a2)
+            e1 = graph.getEdge(a1, 'BTC')
+            e2 = graph.getEdge('BTC', a2)
             return amt * e1.getExchangeRate() * e2.getExchangeRate()
 
         return e.getExchangeRate() * amt
@@ -66,23 +66,26 @@ class ArbitrageEngine():
         vol_sym = path[0]                            # want to get all of the volumes in terms of the first currency
         vols = [0] * (len(path) - 1)                 # volumes of all pairs in said currency
 
-        product = 1
-        for idx in range(len(path) - 1):
-            a = path[idx]
-            b = path[idx + 1]
+        with open('good_ops.txt', 'a') as fh:
+            product = 1
+            for idx in range(len(path) - 1):
+                a = path[idx]
+                b = path[idx + 1]
 
-            edge = graph.getEdge(a, b)
-            v = edge.getVolume()
-            vs = edge.getVolumeSymbol()
-            vols[idx] = self.currencyConversion(vs, vol_sym, v, graph)
-            print("{0} -- vol: {1} units of {2} ({3} units of {4}) --> {5}".format(a, v, vs, vols[idx], vol_sym, b))
+                edge = graph.getEdge(a, b)
+                v = edge.getVolume()
+                vs = edge.getVolumeSymbol()
+                vols[idx] = self.currencyConversion(vs, vol_sym, v, graph)
+                #print("{0} -- vol: {1} units of {2} ({3} units of {4}) --> {5}".format(a, v, vs, vols[idx], vol_sym, b))
+                fh.write("{0} -- vol: {1} units of {2} ({3} units of {4}) on {5} --> {6}\n".format(a, v, vs, vols[idx], vol_sym, edge.getExchange(), b))
+                product = product * edge.getExchangeRate()
 
-            product = product * edge.getExchangeRate()
-
-        min_vol = min(vols)
-        usd_vol = self.currencyConversion(vol_sym, 'USD', min_vol, graph)
-        opp = usd_vol * product
-        profit = opp - usd_vol
-        print("Min Volume: {0}, maximum arbitrage oppurtunity: {1} USD, profit {2} USD".format(min_vol, opp, profit))
+            min_vol = min(vols)
+            usd_vol = self.currencyConversion(vol_sym, 'USDT', min_vol, graph)
+            opp = usd_vol * product
+            profit = opp - usd_vol
+            percent = profit/usd_vol * 100
+            print("Min Volume: {0}, maximum arbitrage oppurtunity: {1} USD, percent growth: {2}%, profit {3} USD".format(min_vol, opp, percent, profit))
+            fh.write("Min Volume: {0}, maximum arbitrage oppurtunity: {1} USD, percent growth: {2}%, profit {3} USD\n".format(min_vol, opp, percent, profit))
         
         

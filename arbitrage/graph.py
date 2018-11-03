@@ -4,19 +4,24 @@ At it's core is a 2D Dictionary aka Dictionary of Dictionaries
 
 Author: Parker Timmerman
 """
-from typing import List, Tuple
 from decimal import *
+from sys import float_info
+from typing import List, Tuple
+
+MAX_FLOAT = float_info.max
 
 class Edge():
     """ An edge object to be used for arbitrage """
 
-    def __init__(self, xrate, weight, vol, vol_sym, pair, ab):
+    def __init__(self, xrate, weight, vol, vol_sym, pair, ab, exch, timestamp):
         self.xrate = xrate                      # exchange rate from the market, generally bid or 1/ask
         self.weight = weight                    # edge weight used for neg cycle detection, -log(xrate)
         self.vol = vol                          # volume associated with bid or ask price
         self.vol_sym = vol_sym                  # currency which the volume is in terms of
         self.pair = pair
-        self.ab = ab
+        self.ab = ab                            # ask or buy price
+        self.exch = exch                        # echange for which this edge comes from
+        self.timestamp = timestamp
 
     # Getters and Setters
     def getExchangeRate(self):
@@ -50,7 +55,13 @@ class Edge():
         self.ab = ab
 
     def Volume(self):
-        return (vol, vol_sym)
+        return (self.vol, self.vol_sym)
+
+    def getExchange(self):
+        return self.exch
+
+    def getTimestamp(self):
+        return self.timestamp
 
 class Graph():
     """ A graph data structure represented as a 2D Dictionary"""
@@ -67,7 +78,7 @@ class Graph():
             self.G[name] = {}
         return True
 
-    def addEdge(self, src, dest, xrate, weight, vol, vol_sym, pair, ab) -> bool:
+    def addEdge(self, src, dest, xrate, weight, vol, vol_sym, pair, ab, exch, timestamp) -> bool:
         """ Add an edge to the graph """
         if src not in self.G:
             print("Source node ({}) does not exist!".format(src))
@@ -75,21 +86,19 @@ class Graph():
         if dest not in self.G:
             print("Destination node ({}) does not exist!".format(dest))
             return False
-
-        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab)           # Src and dest must exist so add the edge
-        return True
-
-    def updateEdge(self, src, dest, xrate, weight, vol, vol_sym, pair, ab) -> bool:
-        """ Update an edge weight between two nodes """
-        if src not in self.G:
-            print("Source node ({}) does not exist!".format(src))
-            return False
-        if dest not in self.G:
-            print("Destination node ({}) does not exist!".format(dest))
-            return False
-        
-        self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab)
-        return True
+        if dest not in self.G[src]:
+            self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab, exch, timestamp)
+        elif timestamp > self.G[src][dest].getTimestamp():
+            # If the given edge is newer than the existing, replace it, no questions asked
+            self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab, exch, timestamp)
+            return True
+        elif weight < self.G[src][dest].getWeight():
+            # An edge already exists with the same timestamp, but we found an edge with a lower weight!
+            self.G[src][dest] = Edge(xrate, weight, vol, vol_sym, pair, ab, exch, timestamp)
+            return True
+        # If we reach here it means the edge we were trying to update is from the same cycle
+        # and we already had an edge that was cheaper
+        return False
     
     def getEdge(self, a, b):
         """ Get the edge from a to b """
@@ -112,7 +121,9 @@ class Graph():
         for src in self.G.keys():
             print("{}:".format(src))
             for dest in self.G[src].keys():
-                print("\t{0} -- weight: {1} --> {2}".format(src, self.G[src][dest], dest))
+                print("\t{0} -- weight: {1} on {2} --> {3}".format(src, self.G[src][dest].getWeight(), 
+                                                                   self.G[src][dest].getExchange(), dest)
+                    )
 
     def traceback(self, start, preds):
         """ Given a starting node and a dictionary of predecessors, performs a traceback to ID a negative loop """
@@ -134,23 +145,23 @@ class Graph():
         """ Perform Bellman-Ford on graph and test for negative cycle """
 
         # Initalize distance to all nodes to be infinity, then set distance to souce node to be 0
-        dist = {node: Decimal('Infinity') for node in self.G.keys()}
+        dist = {node: MAX_FLOAT for node in self.G.keys()}
         pred = {node: None for node in self.G.keys()}
         dist[src] = 0
         num_nodes = len(self.G.keys())
 
         # Find shortest path
-        for i in range (num_nodes - 1):
+        for _ in range (num_nodes - 1):
             for u, v, edge, in self.getEdges():
                 w = edge.getWeight()
-                if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0004') < dist[v]:
+                if dist[u] != MAX_FLOAT and dist[u] + w < dist[v]:
                     dist[v] = dist[u] + w
                     pred[v] = u
        
-        # Detect negative cycle
+        # This is a really slow way to find negative cycles, but ya gotta start somewhere
+        # Loop for number of edges
         for u, v, edge in self.getEdges():
             w = edge.getWeight()
-            if dist[u] != Decimal("Infinity") and dist[u] + w + Decimal('0.0004') < dist[v]:
-                print("Graph contains a negative cycle!")
+            if dist[u] != MAX_FLOAT and dist[u] + w + 0.001 < dist[v]:
+                # print("Graph contains a negative cycle!")
                 return self.traceback(v, pred)
-
