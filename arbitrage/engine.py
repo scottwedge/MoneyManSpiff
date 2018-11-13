@@ -40,7 +40,7 @@ class ArbitrageEngine():
 
     def __init__(self):
         self.K = krakenex.API()
-        self.K.load_key('kraken.key')
+        self.K.load_key('keys/kraken.key')
 
     def currencyConversion(self, a1, a2, amt, graph):
         """ Given two currencies, convert from one (a1) to the other (a2) """

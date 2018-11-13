@@ -71,7 +71,7 @@ class Pipeline():
         self.krakenSymbols = list(filter(lambda x: '.d' not in x, self.krakenSymbols))
         
         # Binance
-        (bPublic, bSecret) = [line.rstrip('\n') for line in open('binance.key').readlines()]
+        (bPublic, bSecret) = [line.rstrip('\n') for line in open('keys/binance.key').readlines()]
         self.B = ccxt.binance()
         bInfo = self.B.publicGetExchangeInfo()
         bRawPairs = [entry['symbol'] for entry in bInfo['symbols']]
@@ -90,10 +90,10 @@ class Pipeline():
         self.bitfinexSymbols = list(filter(cT, bitfinexRawPairs))
 
         # Huobi
-        self.huobi = ccxt.huobipro()
-        huobiInfo = self.huobi.publicGetCommonSymbols()['data']
-        huobiRawPairs = [entry['symbol'].upper() for entry in huobiInfo]
-        self.huobiSymbols = list(filter(cT, huobiRawPairs))
+        #self.huobi = ccxt.huobipro()
+        #huobiInfo = self.huobi.publicGetCommonSymbols()['data']
+        #huobiRawPairs = [entry['symbol'].upper() for entry in huobiInfo]
+        #self.huobiSymbols = list(filter(cT, huobiRawPairs))
 
         # Bitstamp
         self.bitstamp = ccxt.bitstamp()
@@ -249,7 +249,7 @@ class Pipeline():
         binance = data[Exchange.BINANCE]
         coinbase = data[Exchange.COINBASE]
         bitfinex = data[Exchange.BITFINEX]
-        huobi = data[Exchange.HUOBI]
+        #huobi = data[Exchange.HUOBI]
         bitstamp = data[Exchange.BITSTAMP]
 
         for orderBook in kraken.items():
@@ -304,18 +304,18 @@ class Pipeline():
             self.G.addEdge(pair[0], pair[1], bid, w1, bid_vol, pair[0], pair, 'bid', Exchange.BITFINEX, timestamp)
             self.G.addEdge(pair[1], pair[0], 1/ask, w2, ask_vol, pair[0], pair, 'ask', Exchange.BITFINEX, timestamp)
 
-        for orderBook in huobi.items():
-            pair = orderBook[0]
-            ask = float(orderBook[1]['ask'])
-            bid = float(orderBook[1]['bid'])
-            ask_vol = float(orderBook[1]['ask_vol'])
-            bid_vol = float(orderBook[1]['bid_vol'])
-
-            w1 = -(log(bid, 2))
-            w2 = -(log((1/ask), 2))
-
-            self.G.addEdge(pair[0], pair[1], bid, w1, bid_vol, pair[0], pair, 'bid', Exchange.HUOBI, timestamp)
-            self.G.addEdge(pair[1], pair[0], 1/ask, w2, ask_vol, pair[0], pair, 'ask', Exchange.HUOBI, timestamp)
+        #for orderBook in huobi.items():
+        #    pair = orderBook[0]
+        #    ask = float(orderBook[1]['ask'])
+        #    bid = float(orderBook[1]['bid'])
+        #    ask_vol = float(orderBook[1]['ask_vol'])
+        #    bid_vol = float(orderBook[1]['bid_vol'])
+#
+        #    w1 = -(log(bid, 2))
+        #    w2 = -(log((1/ask), 2))
+#
+        #    self.G.addEdge(pair[0], pair[1], bid, w1, bid_vol, pair[0], pair, 'bid', Exchange.HUOBI, timestamp)
+        #    self.G.addEdge(pair[1], pair[0], 1/ask, w2, ask_vol, pair[0], pair, 'ask', Exchange.HUOBI, timestamp)
 
         for orderBook in bitstamp.items():
             pair = orderBook[0]
@@ -367,7 +367,7 @@ class Pipeline():
                     (Exchange.BINANCE, self.binanceSymbols),
                     (Exchange.COINBASE, self.coinbaseSymbols),
                     (Exchange.BITFINEX, self.bitfinexSymbols),
-                    (Exchange.HUOBI, self.huobiSymbols),
+                    #(Exchange.HUOBI, self.huobiSymbols),
                     (Exchange.BITSTAMP, self.bitstampSymbols)
                 ])
                 self.updateGraph(data)

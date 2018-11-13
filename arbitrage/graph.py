@@ -141,7 +141,7 @@ class Graph():
 
         return aux(start, traveled, preds, path)
 
-    def BellmanFord(self, src):
+    def BellmanFordWithTraceback(self, src):
         """ Perform Bellman-Ford on graph and test for negative cycle """
 
         # Initalize distance to all nodes to be infinity, then set distance to souce node to be 0
