@@ -10,6 +10,7 @@ from market_engine import MarketEngine
 from math import log
 from pprint import pprint
 from time import sleep, time
+from util import trimPath
 
 class ArbitrageEngine():
     class _ArbitrageEngine():
@@ -53,6 +54,9 @@ class ArbitrageEngine():
             Performs Bellman-Ford with traceback on our graph and returns the path that results in an arbitrage
             """
             path = self._graph.BellmanFordWithTraceback(src=Currency.USDT)
+
+            
+
 
         def verifyArbitrage(self, path):
             """ Given a path, check to make sure it results in an arbitrage """

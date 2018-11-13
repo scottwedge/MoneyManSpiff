@@ -31,3 +31,12 @@ def validPair(currencies, pair):
             if currencies[i] in pair and currencies[j] in pair:
                 return True
     return False
+
+def trimArbitragePath(path):
+    """
+    Sometimes Bellman Ford can result in extra currencies being appended to the end of the path
+    Remove currencies until we find the one that we start with.
+    """
+    start = path[0]
+    while not path[-1] == start:
+        path.remove(path[-1])
