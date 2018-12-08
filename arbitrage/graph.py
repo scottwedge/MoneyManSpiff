@@ -108,6 +108,11 @@ class Graph():
         else:
             return self.G[a][b]
 
+    def getEdges(self):
+        """ Get a list of the edges in the graph """
+        return list([(src, dest, self.G[src][dest]) for src in self.G.keys() for dest in self.G[src].keys()])
+
+
     def getNodes(self) -> List[str]:
         """" Returns a list of all the nodes in the graph """
         return list(self.G.keys())
@@ -161,5 +166,5 @@ class Graph():
         # Loop for number of edges
         for u, v, w in self.getWeights():
             if dist[u] != MAX_FLOAT and dist[u] + w + 0.001 < dist[v]:
-                # print("Graph contains a negative cycle!")
+                print("Graph contains a negative cycle!")
                 return self.traceback(v, pred)

@@ -32,21 +32,19 @@ class ArbitrageEngine():
 
             Requests ticker data for every supported pair on every supported exchange, and then updates the graph.
             """
-            timestamp = int(time())  # Stamp each request with the local time which we requested it
             for exchange in self._supported_exchanges:
-                marketData = VirtualMarket.instance().getArbitrageWeights(exch=exchange)
-                for currencyPairAndWeight in marketData:
-                    first = currencyPairAndWeight[0]
-                    second = currencyPairAndWeight[1]
-            
-                    self._graph.addEdge(first, second, 0, weight, 0, pair[0], pair, 'bid', exchange, timestamp)
-                    self._graph.addEdge(pair[1], pair[0], 1/ask, weight2, ask_vol, pair[0], pair, 'ask', exchange, timestamp)
+                marketData = VirtualMarket.instance().getMarketData(exch=exchange)
+                for src, dest, edge in marketData.getEdges():
+                    self._graph.addEdge(src, dest, edge.xrate, edge.weight, edge.vol, edge.vol_sym, edge.pair, edge.ab, edge.exch, edge.timestamp)
 
         def findArbitrage(self, graph: Graph, src: Currency):
             """
             Performs Bellman-Ford with traceback on a graph and returns the path that results in an arbitrage
             """
             path = graph.BellmanFordWithTraceback(src=src)
+            if not path:
+                return None
+                
             trimmedPath = trimArbitragePath(path)
             return trimmedPath
 

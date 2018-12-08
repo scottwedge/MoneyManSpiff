@@ -49,7 +49,7 @@ class VirtualMarket():
                     graph.addNode(currency)
                 self._market[exchange] = graph
 
-        def updateExchange(self, exch: Exchange, marketData):
+        def updateExchange(self, exch: Exchange, marketData, timestamp = None):
             """
             Given an exchange, and market data in the form of:
             {
@@ -61,7 +61,8 @@ class VirtualMarket():
             if not exch in self._market:
                 raise TypeError('{} is not in the market representation, it must not be supported!')
             else:
-                timestamp = int(time())  # Stamp each request with the local time which we requested it
+                if not timestamp:
+                    timestamp = int(time())  # Stamp each request with the local time which we requested it
                 for pairInfo in marketData.items():
                     pair = pairInfo[0]
 
@@ -76,6 +77,25 @@ class VirtualMarket():
                     self._market[exch].addEdge(pair[0], pair[1], bid, weight1, bid_vol, pair[0], pair, 'bid', exch, timestamp)
                     self._market[exch].addEdge(pair[1], pair[0], 1/ask, weight2, ask_vol, pair[0], pair, 'ask', exch, timestamp)
 
+        def updateMarket(self, marketData):
+            """
+            Given market data in the form of:
+            {
+                Exchange.KRAKEN:
+                {
+                    ...
+                },
+                Exchange.BINANCE:
+                {
+                    ...
+                },
+            }
+            """
+            timestamp = int(time())
+            for exchange in marketData.keys():
+                self.updateExchange(exch=exchange, marketData=marketData[exchange], timestamp=timestamp)
+
+
         def getArbitrageWeights(self, exch: Exchange):
             """
             Given an exchange, returns a dictionary of node pairs (currencies) to the -log(exchange rate)
@@ -85,6 +105,12 @@ class VirtualMarket():
             for weight in exchangeData.getWeights():
                 weights[(weight[0], weight[1])] = weight[2]
             return weights
+
+        def getMarketData(self, exch: Exchange):
+            """
+            Given an exchange, returns a dictionary that is market data for the exchange
+            """
+            return self._market[exch]
                 
 
 
