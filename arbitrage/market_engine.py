@@ -5,6 +5,7 @@ Author: Parker Timmerman
 """
 import ccxt
 
+from book_keeper import BookKeeper
 from constants import (
     Currency,
     Exchange,
@@ -145,10 +146,10 @@ class MarketEngine():
             
             data = list(resp['result'].items())[0][1]
             return ((first, second), {
-                'ask': data['a'][0],
-                'bid': data['b'][0],
-                'ask_vol': data['a'][2],
-                'bid_vol': data['b'][2],
+                'ask': float(data['a'][0]),
+                'bid': float(data['b'][0]),
+                'ask_vol': float(data['a'][2]),      # Kraken sometimes rounds up on its order volumes
+                'bid_vol': float(data['b'][2]),      # i.e. 742.4 gets returned as 743.00
             })
 
         def _fetchTickerBinance(self, first: Currency, second: Currency):
@@ -159,10 +160,10 @@ class MarketEngine():
             if not 'asks' in resp or not 'bids' in resp:
                 raise ApiError('binance api returned an error:\n{}'.format(resp))
             return ((first, second), {
-                'ask': resp['asks'][0][0],
-                'bid': resp['bids'][0][0],
-                'ask_vol': resp['asks'][0][1],
-                'bid_vol': resp['bids'][0][1],
+                'ask': float(resp['asks'][0][0]),
+                'bid': float(resp['bids'][0][0]),
+                'ask_vol': float(resp['asks'][0][1]),
+                'bid_vol': float(resp['bids'][0][1]),
             })
 
         def fetchTicker(self, exch: Exchange, first: Currency, second: Currency):
@@ -172,11 +173,11 @@ class MarketEngine():
             Example return value:
             (
                 (<Currency.XRP: 'XRP'>, <Currency.USDT: 'USDT'>),
-                {'ask': '0.51003000', 'bid': '0.50960000', 'ask_vol': '195.000', 'bid_vol': '30.000'}
+                {'ask': 0.51003000, 'bid': 0.50960000, 'ask_vol': 195.000, 'bid_vol': 30.000}
             )
 
             return[0] = (<Currency.XRP: 'XRP'>, <Currency.USDT: 'USDT'>)
-            return[1] = {'ask': '0.51003000', 'bid': '0.50960000', 'ask_vol': '195.000', 'bid_vol': '30.000'}
+            return[1] = {'ask': 0.51003000, 'bid': 0.50960000, 'ask_vol': 195.000, 'bid_vol': 30.000}
             """
             if exch is Exchange.KRAKEN:
                 return self._fetchTickerKraken(first=first, second=second)
@@ -277,13 +278,46 @@ class MarketEngine():
                 'timestamp': str(timestamp(TimeUnit.Milliseconds))
             })
 
-        def makeTrade(self, order: Order):
+        def makeUnsafeTrade(self, order: Order, updateBookKeeper: bool = True):
+            """
+            Given an Order object, will post a trade to the market.
+            WARNING: Ignores all safety standards and does not check BookKeeper for our current assets
+            """
             if order.exchange is Exchange.KRAKEN:
                 return self._makeTradeKraken(order)
             if order.exchange is Exchange.BINANCE:
                 return self._makeTradeBinance(order)
             else:
                 raise NotImplementedError('make trade is not implemented for {}'.format(order.exchange))
+
+ #       def makeSafeTrades(self, orders: List[Order], sameVolume: bool = True, updateBookKeeper: bool = True):
+ #           """
+ #           Given a list of orders, will execute the orders such that they comply with our safety standards
+#
+ #           Note: For exploiting an arbitrage oppurtunity we need to make sure they all have the same
+ #           volume, so the sameVolume flag defaults to True
+ #           """
+ #           currency = orders[0].pair[0]
+ #           print(currency)
+#
+ #           cur_order_vol = orders[0].volume
+ #           cur_order_vol_usd = ArbitrageEngine.instance().convertCurrency(
+ #               amt=cur_order_vol,
+ #               starting=currency, 
+ #               ending=Currency.USDT
+ #           )
+#
+ #           max_order_vol = BookKeeper.instance().getMaxOrderVolumeOfCurrency(currency)
+ #           max_order_vol_usd = ArbitrageEngine.instance().convertCurrency(
+ #               amt=max_order_vol,
+ #               starting=currency,
+ #               ending=Currency.USDT
+ #           )
+#
+ #           order_volume_usd = min(SafetyValues.MaximumOrderValueUSD, max_order_vol_usd, cur_order_vol_usd)
+#
+ #           max_volume = min(SafetyValues.MaximumOrderValueUSD,
+
 
         def supportedExchanges(self) -> List[Exchange]:
             """

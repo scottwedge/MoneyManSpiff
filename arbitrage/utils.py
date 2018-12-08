@@ -40,3 +40,17 @@ def trimArbitragePath(path):
     start = path[0]
     while not path[-1] == start:
         path.remove(path[-1])
+    return path
+
+def getMinimumVolumeOfPath(path, graph):
+    """
+    Given a path, finds the minimum volume of the two orders
+    """
+    volumes = []
+    for idx in range(len(path) - 1):
+        first = path[idx]
+        second = path[idx + 1]
+
+        volumes.append(graph.getEdge(first, second).getVolume())
+    return min(volumes)
+

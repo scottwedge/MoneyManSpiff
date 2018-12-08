@@ -372,7 +372,7 @@ class Pipeline():
                 ])
                 self.updateGraph(data)
                 self.G.print()
-                path = self.G.BellmanFord('BTC')
+                path = self.G.BellmanFordWithTraceback('BTC')
                 if path:
                     self.checkArbitrage(path)
                     self.E.exploitArbitrage(self.G, path)

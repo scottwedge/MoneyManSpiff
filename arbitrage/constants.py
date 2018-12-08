@@ -23,21 +23,23 @@ class CurrencyPair(Enum):
     XRPUSDT = (Currency.XRP, Currency.USDT)
     EOSUSDT = (Currency.EOS, Currency.USDT)
 
-class BuyOrSell(Enum):
-    BUY = 'buy'
-    SELL = 'sell'
+class BS(Enum):
+    BUY = 'BUY'
+    SELL = 'SELL'
 
 class OrderType(Enum):
-    MARKET = 'market'
-    LIMIT = 'limit'
+    MARKET = 'MARKET'
+    LIMIT = 'LIMIT'
 
 class SafetyValues(Enum):
     """
     Contants for our safety standards. All values are in USD
     """
-    MinimumLiquidAssets = 100
-    MaximumOrderValue = 20
+    MinimumLiquidAssetsUSD = 200
+    MaximumOrderValueUSD = 50
+    MinimumOrderValueUSD = 10
     MaximumOpenTrades = 1
+    MinimumOpportunity = 0.5                # This value is in percent i.e. 0.5%
 
 class TimeUnit(Enum):
     Milliseconds = 'milliseconds'
@@ -69,3 +71,9 @@ kTOn = {
     'XGNO': 'GNO',
 }
 
+# Map of exchange to exchange fees
+# (Maker, Taker)
+feeMap = {
+    Exchange.KRAKEN: (0.0016, 0.0026),
+    Exchange.BINANCE: (0.001, 0.001),
+}

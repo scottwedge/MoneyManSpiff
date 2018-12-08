@@ -51,7 +51,7 @@ class Edge():
 
     def getAskOrBid(self):
         return self.ab
-    def setAskOrBuy(self, ab):
+    def setAskOrBid(self, ab):
         self.ab = ab
 
     def Volume(self):
@@ -112,9 +112,9 @@ class Graph():
         """" Returns a list of all the nodes in the graph """
         return list(self.G.keys())
 
-    def getEdges(self) -> List[Tuple[str, str, float]]:
-        """ Returns a list of all the edges in the graph, represented as tuples """
-        return list([(src, dest, self.G[src][dest]) for src in self.G.keys() for dest in self.G[src].keys()])
+    def getWeights(self) -> List[Tuple[str, str, float]]:
+        """ Returns a list of tuples in the following format (first node, second node, arbitrage weight) """
+        return list([(src, dest, self.G[src][dest].getWeight()) for src in self.G.keys() for dest in self.G[src].keys()])
 
     def print(self):
         """ String representation of the graph """
@@ -152,16 +152,14 @@ class Graph():
 
         # Find shortest path
         for _ in range (num_nodes - 1):
-            for u, v, edge, in self.getEdges():
-                w = edge.getWeight()
+            for u, v, w, in self.getWeights():
                 if dist[u] != MAX_FLOAT and dist[u] + w < dist[v]:
                     dist[v] = dist[u] + w
                     pred[v] = u
        
         # This is a really slow way to find negative cycles, but ya gotta start somewhere
         # Loop for number of edges
-        for u, v, edge in self.getEdges():
-            w = edge.getWeight()
+        for u, v, w in self.getWeights():
             if dist[u] != MAX_FLOAT and dist[u] + w + 0.001 < dist[v]:
                 # print("Graph contains a negative cycle!")
                 return self.traceback(v, pred)
