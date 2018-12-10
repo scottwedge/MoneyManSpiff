@@ -30,15 +30,15 @@ class VirtualMarket():
                 Exchange.KRAKEN,
             ]
 
+#                Currency.XRP,
             self._supportedCurrencies = [
-                Currency.EOS,
+                Currency.ETH,
                 Currency.USDT,
-                Currency.XRP,
             ]
 
+#                (Currency.XRP, Currency.USDT),
             self._supportedCurrencyPairs = [
-                (Currency.XRP, Currency.USDT),
-                (Currency.EOS, Currency.USDT),
+                (Currency.ETH, Currency.USDT),
             ]
             self._initMarket()
 
@@ -111,6 +111,18 @@ class VirtualMarket():
             Given an exchange, returns a dictionary that is market data for the exchange
             """
             return self._market[exch]
+
+        def convertCurrency(self, exch: Exchange, amt: float, start: Currency, end: Currency):
+            """
+            Given an exchange, an amount, starting currency, and an ending currency, will convert
+            the amount in terms of the start currency to an amount in terms of the end currency
+            """
+            if (start == end):
+                return amt
+                
+            exchangeGraph = self._market[exch]
+            pairEdge = exchangeGraph.getEdge(start, end)
+            return amt * pairEdge.getExchangeRate()
                 
 
 

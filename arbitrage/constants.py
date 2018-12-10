@@ -39,7 +39,7 @@ class SafetyValues(Enum):
     MaximumOrderValueUSD = 50
     MinimumOrderValueUSD = 10
     MaximumOpenTrades = 1
-    MinimumOpportunity = 0.5                # This value is in percent i.e. 0.5%
+    MinimumOpportunity = 0.4                # This value is in percent i.e. 0.5%
 
 class TimeUnit(Enum):
     Milliseconds = 'milliseconds'
@@ -48,15 +48,15 @@ class TimeUnit(Enum):
 # Kraken uses some weird symbols, below are maps from normal -> kraken and vice versa
 # This is a map of normal (n) -> (TO) kraken (k) symbols
 nTOk = {
-    'BTC': 'XBT',
-    'BCH': 'BCH',
-    'ETH': 'ETH',
-    'LTC': 'LTC',
-    'USDT': 'USD',
-    'EOS': 'EOS',
-    'XRP': 'XRP',
-    'ZEC': 'ZEC',
-    'GNO': 'GNO',
+    'BTC': 'XXBT',
+    'BCH': 'XBCH',
+    'ETH': 'XETH',
+    'LTC': 'XLTC',
+    'USDT': 'ZUSD',
+    'EOS': 'XEOS',
+    'XRP': 'XXRP',
+    'ZEC': 'XZEC',
+    'GNO': 'XGNO',
 }
 # This is a map of kraken (k) -> (TO) normal (n) symbols
 kTOn = {

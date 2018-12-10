@@ -44,7 +44,7 @@ class ArbitrageEngine():
             path = graph.BellmanFordWithTraceback(src=src)
             if not path:
                 return None
-                
+
             trimmedPath = trimArbitragePath(path)
             return trimmedPath
 
@@ -68,12 +68,15 @@ class ArbitrageEngine():
 
                 xrate = edge.getExchangeRate()      # multiply all exhange rates to verify product > 1
                 product = product * xrate
+                percentGrowth = (product - 1) * 100
 
                 print("{0} -- {1} --> {2}".format(a, weight, b))
             if sum < 0.0:                           # Good
-                print("{0}Sum of cycle: {1}\tProduct of exhange rates: {2}{3}".format('\033[92m',sum,product,'\033[0m'))
+                print("{0}Sum of cycle: {1}\tProduct of exhange rates: {2}\tGrowth: {3}%{4}".format('\033[92m', sum, product, percentGrowth, '\033[0m'))
+                return percentGrowth
             else:                                   # Bad
                 print("{0}Sum of cycle: {1}{2}".format('\033[91m',sum,'\033[0m'))
+                return 0
 
         def pathToOrders(self, path, graph):
             """

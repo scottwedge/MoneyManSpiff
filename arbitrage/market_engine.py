@@ -7,6 +7,7 @@ import ccxt
 
 from book_keeper import BookKeeper
 from constants import (
+    BS,
     Currency,
     Exchange,
     kTOn,
@@ -16,10 +17,11 @@ from constants import (
 )
 from functools import partial
 from utils import loadKrakenKeys, loadBinanceKeys, timestamp, validPair
-from my_types import ApiError, Order
+from my_types import ApiError, Order, ValuePair
 from pprint import pprint
 from time import time
 from typing import List
+from virtual_market import VirtualMarket
 
 class MarketEngine():
     class _MarketEngine():
@@ -30,6 +32,7 @@ class MarketEngine():
                 'secret': krakenKeys[1],
                 'verbose': False,
             })
+            self._kraken.load_markets()
 
             binanceKeys = loadBinanceKeys()
             self._binance = ccxt.binance({
@@ -37,6 +40,7 @@ class MarketEngine():
                 'secret': binanceKeys[1],
                 'verbose': False,
             })
+            self._binance.load_markets()
 
             self._supportedExchanges = [
                 Exchange.BINANCE,
@@ -48,9 +52,9 @@ class MarketEngine():
                 content = fs.read()
             self._supportedCurrencies = [Currency[c.rstrip('\n')] for c in content.split(',')]
 
+            #(Currency.XRP, Currency.USDT),
             self._supportedCurrencyPairs = [
-                (Currency.XRP, Currency.USDT),
-                (Currency.EOS, Currency.USDT),
+                (Currency.ETH, Currency.USDT),
             ]
 
     # ======== Query for information ========
@@ -76,9 +80,22 @@ class MarketEngine():
             else:
                 balances = resp['result']
                 position = {}
+                supported_currencies_string = list(map(lambda x: nTOk[x.value], self._supportedCurrencies))
                 for (curr, amt) in balances.items():
-                    # Note: need to convert to native currency
-                    position[Currency[kTOn[curr]]] = (amt, amt)
+                    if curr in supported_currencies_string:
+                        currency = Currency[kTOn[curr]]
+                        amount = float(amt)
+                        usd_amount = VirtualMarket.instance().convertCurrency(
+                            exch=Exchange.KRAKEN,
+                            amt=amount,
+                            start=currency,
+                            end=Currency.USDT
+                        )
+                        position[currency] = ValuePair(amount, usd_amount)
+                BookKeeper.instance().updateBalance(
+                    exch=Exchange.KRAKEN,
+                    balance=position
+                )
                 return position
 
 
@@ -118,9 +135,22 @@ class MarketEngine():
             else:
                 balances = resp['balances']
                 position = {}
+                supported_currencies_string = self.supportedCurrenciesString()
                 for entry in balances:
-                    # Note: need to convert to native currency
-                    position[Currency[entry['asset']]] = (entry['free'], entry['free'])
+                    if entry['asset'] in supported_currencies_string:
+                        currency = Currency[entry['asset']]
+                        amount = float(entry['free'])
+                        usd_amount = VirtualMarket.instance().convertCurrency(
+                            exch=Exchange.BINANCE,
+                            amt=amount,
+                            start=currency,
+                            end=Currency.USDT
+                        )
+                        position[currency] = ValuePair(amount, usd_amount)
+                BookKeeper.instance().updateBalance(
+                    exch=Exchange.BINANCE,
+                    balance=position
+                )
                 return position
 
         def fetchBalance(self, exch: Exchange):
@@ -252,12 +282,20 @@ class MarketEngine():
             if not self._kraken:
                 raise AttributeError('Kraken API instance has not been initialized')
             return self._kraken.privatePostAddOrder({
-                'pair': order.pair,
-                'type': order.buyOrSell,
-                'orderType': order.orderType,
-                'price': order.price,
-                'volume': order.volume,
+                'pair': "{0}{1}".format(nTOk[order.pair[0].value], nTOk[order.pair[1].value]),
+                'type': order.buyOrSell.value.lower(),
+                'ordertype': order.orderType.value.lower(),
+                'price': "%.2f" % order.price,
+                'volume': str(order.volume),
             })
+
+            #return {
+            #    'pair': "{0}{1}".format(nTOk[order.pair[0].value], nTOk[order.pair[1].value]),
+            #    'type': order.buyOrSell.value.lower(),
+            #    'ordertype': order.orderType.value.lower(),
+            #    'price': "%.2f" % order.price,
+            #    'volume': str(order.volume),
+            #}
 
         def _makeTradeBinance(self, order: Order):
             """
@@ -269,14 +307,26 @@ class MarketEngine():
             if not self._binance:
                 raise AttributeError('Binance API instance has not been initalized')
             return self._binance.privatePostOrder({
-                'pair': order.pair,
-                'type': order.orderType,
-                'side': order.buyOrSell,
-                'quantity': order.volume,
-                'price': order.price,
-                'recvWindow': 3000,
+                'symbol': "{0}{1}".format(order.pair[0].value, order.pair[1].value),
+                'type': order.orderType.value,
+                'timeInForce': 'GTC',
+                'side': order.buyOrSell.value,
+                'quantity': str(order.volume),
+                'price': "%.2f" % order.price,
+                'recvWindow': str(3000),
                 'timestamp': str(timestamp(TimeUnit.Milliseconds))
             })
+
+            #return {
+            #    'symbol': "{0}{1}".format(order.pair[0].value, order.pair[1].value),
+            #    'type': order.orderType.value,
+            #    'timeInForce': 'GTC',
+            #    'side': order.buyOrSell.value,
+            #    'quantity': str(order.volume),
+            #    'price': "%.2f" % order.price,
+            #    'recvWindow': str(3000),
+            #    'timestamp': str(timestamp(TimeUnit.Milliseconds))
+            #}
 
         def makeUnsafeTrade(self, order: Order, updateBookKeeper: bool = True):
             """
@@ -289,6 +339,64 @@ class MarketEngine():
                 return self._makeTradeBinance(order)
             else:
                 raise NotImplementedError('make trade is not implemented for {}'.format(order.exchange))
+
+        def createSafeTrades(self, orders: List[Order], updateBookKeeper: bool = True):
+            """
+            Given a list of trades, will convert them to safe trades
+            -> AKA trades that:
+                - Below our maximum
+                - Make sure we have enough assets to complete the trade
+            """
+            safe_orders = []
+            
+            max_vol = min([VirtualMarket.instance().convertCurrency(
+                exch=order.exchange,
+                amt=order.volume,
+                start=order.pair[0],
+                end=Currency.USDT
+            ) for order in orders])
+
+            max_vol = min(max_vol, float(SafetyValues.MaximumOrderValueUSD.value))
+
+            for order in orders:
+                required_currency = None
+                if order.buyOrSell == BS.BUY:
+                    required_currency = order.pair[1]
+                elif order.buyOrSell == BS.SELL:
+                    required_currency = order.pair[0]
+
+                available_assets = BookKeeper.instance().getValuePairOfCurrencyInExchange(
+                    exch=order.exchange,
+                    curr=required_currency,
+                )
+                max_vol = min(max_vol, available_assets.amt_usd * 0.8)
+
+
+                if max_vol < SafetyValues.MinimumOrderValueUSD.value:
+                    return None
+
+            max_vol = VirtualMarket.instance().convertCurrency(
+                                exch=order.exchange,
+                                amt=max_vol,
+                                start=Currency.USDT,
+                                end=order.pair[0]
+                            )
+            max_vol = float(self._binance.amount_to_precision("{0}/{1}".format(order.pair[0].value, order.pair[1].value), max_vol))
+
+            for order in orders:
+                safe_orders.append(
+                    Order(
+                        exchange=order.exchange,
+                        buyOrSell=order.buyOrSell,
+                        orderType=order.orderType,
+                        pair=order.pair,
+                        price=(order.price*0.999),
+                        volume=max_vol,
+                    )
+                )
+
+            return safe_orders
+
 
  #       def makeSafeTrades(self, orders: List[Order], sameVolume: bool = True, updateBookKeeper: bool = True):
  #           """
