@@ -36,10 +36,10 @@ class SafetyValues(Enum):
     Contants for our safety standards. All values are in USD
     """
     MinimumLiquidAssetsUSD = 200
-    MaximumOrderValueUSD = 50
-    MinimumOrderValueUSD = 10
+    MaximumOrderValueUSD = 12
+    MinimumOrderValueUSD = 5
     MaximumOpenTrades = 1
-    MinimumOpportunity = 0.4                # This value is in percent i.e. 0.5%
+    MinimumOpportunity = 0.9                # This value is in percent i.e. 0.5%
 
 class TimeUnit(Enum):
     Milliseconds = 'milliseconds'

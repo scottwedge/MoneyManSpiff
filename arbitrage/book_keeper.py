@@ -7,6 +7,7 @@ from typing import List
 
 from constants import BS, Currency, Exchange, OrderType
 from my_types import Order, ValuePair
+from virtual_market import VirtualMarket
 
 class BookKeeper():
     class _BookKeeper():
@@ -81,6 +82,51 @@ class BookKeeper():
                     raise TypeError('Currency is not in the balances map for this exchange, please add it before trying to update it')
                 else:
                     self._balances[exch][curr] = value_pair
+
+        def reportOrder(self, order=Order):
+            """
+            Given an order, updates the positions for that exchange
+            """
+            exch = order.exchange
+            if not exch in self._balances:
+                raise TypeError('Exchange is not in the balances map, please add it before trying to add a currency to it')
+            
+            acq_curr = order.pair[0]
+            acq_amt = order.volume
+
+            los_curr = order.pair[1]
+            los_amt = order.volume * order.price
+
+            if order.buyOrSell == BS.SELL:
+                acq_amt = acq_amt * -1
+            else:
+                los_amt = los_amt * -1
+
+            new_acq_amt = acq_amt + self._balances[exch][acq_curr].amt
+            new_los_amt = los_amt + self._balances[exch][los_curr].amt
+
+            new_acq_amt_usd = VirtualMarket.instance().convertCurrency(
+                exch=order.exchange,
+                amt=new_acq_amt,
+                start=acq_curr,
+                end=Currency.USDT,
+            )
+            self._balances[exch][acq_curr] = ValuePair(
+                amt=new_acq_amt,
+                amt_usd=new_acq_amt_usd,
+            )
+
+            new_los_amt_usd = VirtualMarket.instance().convertCurrency(
+                exch=order.exchange,
+                amt=new_los_amt,
+                start=los_curr,
+                end=Currency.USDT,
+            )
+            self._balances[exch][los_curr] = ValuePair(
+                amt=new_los_amt,
+                amt_usd=new_los_amt_usd,
+            )
+
 
         def updateBalance(self, exch: Exchange, balance: {}) -> None:
             """

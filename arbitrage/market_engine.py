@@ -333,12 +333,17 @@ class MarketEngine():
             Given an Order object, will post a trade to the market.
             WARNING: Ignores all safety standards and does not check BookKeeper for our current assets
             """
-            if order.exchange is Exchange.KRAKEN:
-                return self._makeTradeKraken(order)
-            if order.exchange is Exchange.BINANCE:
-                return self._makeTradeBinance(order)
-            else:
-                raise NotImplementedError('make trade is not implemented for {}'.format(order.exchange))
+            resp = None
+            #if order.exchange is Exchange.KRAKEN:
+            #    resp = self._makeTradeKraken(order)
+            #    BookKeeper.instance().reportOrder(order=order)
+            #    return resp
+            #if order.exchange is Exchange.BINANCE:
+            #    resp = self._makeTradeBinance(order)
+            #    BookKeeper.instance().reportOrder(order=order)
+            #    return resp
+            #else:
+            #    raise NotImplementedError('make trade is not implemented for {}'.format(order.exchange))
 
         def createSafeTrades(self, orders: List[Order], updateBookKeeper: bool = True):
             """
@@ -373,6 +378,7 @@ class MarketEngine():
 
 
                 if max_vol < SafetyValues.MinimumOrderValueUSD.value:
+                    print("Max Vol: {}".format(max_vol))
                     return None
 
             max_vol = VirtualMarket.instance().convertCurrency(

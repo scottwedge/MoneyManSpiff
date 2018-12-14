@@ -73,7 +73,8 @@ def run():
                         for order in safe_orders:
                             pprint(MarketEngine.instance().makeUnsafeTrade(order=order))
                             print("Executed Order: {}".format(order.toStringShort()))
-                        searchForOpportunities = False
+
+                        pprint(BookKeeper.instance()._balances)
 
             else:
                 print("{0}No arbitrage opportunity found!{1}\n".format('\033[91m','\033[0m'))
