@@ -11,7 +11,7 @@ from virtual_market import VirtualMarket
 
 class BookKeeper():
     class _BookKeeper():
-        def __init__(self):
+        def __init__(self, currencies, exchanges):
             """
             Example of balances:
             {
@@ -28,15 +28,8 @@ class BookKeeper():
             self._balances = {}
             self._trades = []
 
-            self._supportedExchanges = [
-                Exchange.BINANCE,
-                Exchange.KRAKEN,
-            ]
-
-            # Load currencies from supported_currencies file
-            with open('supported_currencies.txt') as fs:
-                content = fs.read()
-            self._supportedCurrencies = [Currency[c.rstrip('\n')] for c in content.split(',')]
+            self._supportedExchanges = exchanges
+            self._supportedCurrencies = currencies
 
             for exchange in self._supportedExchanges:
                 self.addExchange(exchange)
@@ -193,6 +186,11 @@ class BookKeeper():
 
     INSTANCE = None
     @classmethod
+    def initialize(cls, currencies, exchanges):
+        BookKeeper.INSTANCE = cls._BookKeeper(currencies, exchanges)
+
+
+    @classmethod
     def instance(cls):
         """
         Returns the singleton instance. On its first call, raises and error and then calls the
@@ -201,8 +199,7 @@ class BookKeeper():
         if BookKeeper.INSTANCE:
             return BookKeeper.INSTANCE
         else:
-            BookKeeper.INSTANCE = cls._BookKeeper()
-            return BookKeeper.INSTANCE
+            raise AttributeError('You must initialize the BookKeeper before trying to use it!')
 
     def __call__(self):
         raise TypeError('BookKeeper must be accessed through \'BookKeeper.instance()\'.')

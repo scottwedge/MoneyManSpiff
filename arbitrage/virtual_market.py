@@ -11,7 +11,7 @@ from time import time
 
 class VirtualMarket():
     class _VirtualMarket():
-        def __init__(self):
+        def __init__(self, currencies, exchanges, pairs):
             """
             Example of market:
             {
@@ -25,21 +25,11 @@ class VirtualMarket():
             """
             self._market = {}
 
-            self._supportedExchanges = [
-                Exchange.BINANCE,
-                Exchange.KRAKEN,
-            ]
-
+            self._supportedExchanges = exchanges
 #                Currency.XRP,
-            self._supportedCurrencies = [
-                Currency.ETH,
-                Currency.USDT,
-            ]
-
+            self._supportedCurrencies = currencies
 #                (Currency.XRP, Currency.USDT),
-            self._supportedCurrencyPairs = [
-                (Currency.ETH, Currency.USDT),
-            ]
+            self._supportedCurrencyPairs = pairs
             self._initMarket()
 
         def _initMarket(self):
@@ -122,11 +112,18 @@ class VirtualMarket():
                 
             exchangeGraph = self._market[exch]
             pairEdge = exchangeGraph.getEdge(start, end)
+            if not pairEdge:
+                return -1
             return amt * pairEdge.getExchangeRate()
                 
 
 
     INSTANCE = None
+    @classmethod
+    def initialize(cls, currencies, exchanges, pairs):
+        VirtualMarket.INSTANCE = cls._VirtualMarket(currencies, exchanges, pairs)
+
+
     @classmethod
     def instance(cls):
         """
@@ -135,9 +132,8 @@ class VirtualMarket():
         """
         if VirtualMarket.INSTANCE:
             return VirtualMarket.INSTANCE
-        else:
-            VirtualMarket.INSTANCE = cls._VirtualMarket()
-            return VirtualMarket.INSTANCE
+        else:        
+            raise AttributeError('You must initalize the Virtual Market before trying to use it!')
 
     def __call__(self):
         raise TypeError('VirtualMarket must be accessed through \'VirtualMarket.instance()\'.')

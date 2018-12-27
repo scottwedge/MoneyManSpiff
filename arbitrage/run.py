@@ -1,15 +1,29 @@
 from arbitrage_engine import ArbitrageEngine
 from book_keeper import BookKeeper
 from market_engine import MarketEngine
-from constants import Currency, SafetyValues
+from constants import Exchange, Currency, SafetyValues
 from virtual_market import VirtualMarket
 
 from pprint import pprint
 from time import sleep
 
 def initializeEverything():
-    exchanges = MarketEngine.instance().supportedExchanges()
+    currencies = [
+        Currency.BTC,
+        Currency.ETH,
+        Currency.LTC,
+        Currency.XRP,
+    ]
+    exchanges = [
+        Exchange.BINANCE,
+        Exchange.KRAKEN
+    ]
+    MarketEngine.initialize(currencies, exchanges, None)
     pairs = MarketEngine.instance().supportedCurrencyPairs()
+    
+    ArbitrageEngine.initialize(currencies, exchanges, pairs)
+    BookKeeper.initialize(currencies, exchanges)
+    VirtualMarket.initialize(currencies, exchanges, pairs)
 
     try:
         marketData = {}

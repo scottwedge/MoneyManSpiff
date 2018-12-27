@@ -16,7 +16,7 @@ from constants import (
     TimeUnit
 )
 from functools import partial
-from utils import loadKrakenKeys, loadBinanceKeys, timestamp, validPair
+from utils import loadKrakenKeys, loadBinanceKeys, splitPair, timestamp, validPair
 from my_types import ApiError, Order, ValuePair
 from pprint import pprint
 from time import time
@@ -25,7 +25,7 @@ from virtual_market import VirtualMarket
 
 class MarketEngine():
     class _MarketEngine():
-        def __init__(self):
+        def __init__(self, currencies, exchanges, pairs):
             krakenKeys = loadKrakenKeys()
             self._kraken = ccxt.kraken({
                 'apiKey': krakenKeys[0],
@@ -42,20 +42,9 @@ class MarketEngine():
             })
             self._binance.load_markets()
 
-            self._supportedExchanges = [
-                Exchange.BINANCE,
-                Exchange.KRAKEN,
-            ]
-
-            # Load currencies from supported_currencies file
-            with open('supported_currencies.txt') as fs:
-                content = fs.read()
-            self._supportedCurrencies = [Currency[c.rstrip('\n')] for c in content.split(',')]
-
-            #(Currency.XRP, Currency.USDT),
-            self._supportedCurrencyPairs = [
-                (Currency.ETH, Currency.USDT),
-            ]
+            self._supportedExchanges = exchanges
+            self._supportedCurrencies = currencies
+            self._supportedCurrencyPairs = pairs
 
     # ======== Query for information ========
         
@@ -255,15 +244,18 @@ class MarketEngine():
             if not keyword in resp:
                 raise ApiError('Kraken api did not return a valid response')
             assetPairInfo = resp[keyword]
-            rawAssetPairs = [assetPairInfo[pair]['altname'] for pair in assetPairInfo]
-            
+            rawAssetPairs = [pair for pair in assetPairInfo.keys()]
             krakenFormattedSupportedCurrencies = list(map(nTOk.get, self.supportedCurrenciesString()))
             validKrakenPair = partial(validPair, krakenFormattedSupportedCurrencies)
             krakenPairs = list(filter(validKrakenPair, rawAssetPairs))
-            return list(filter(lambda x: '.d' not in x, krakenPairs))
-            
+            krakenPairs = list(filter(lambda x: '.d' not in x, krakenPairs))    # remove the "dark market" stuff
 
+            formattedPairs = []
+            for pair in krakenPairs:
+                first, second = splitPair(krakenFormattedSupportedCurrencies, pair)
+                formattedPairs.append((Currency[kTOn[first]], Currency[kTOn[second]]))
 
+            return formattedPairs
 
     # ======== Make Trades ========
 
@@ -284,8 +276,7 @@ class MarketEngine():
             return self._kraken.privatePostAddOrder({
                 'pair': "{0}{1}".format(nTOk[order.pair[0].value], nTOk[order.pair[1].value]),
                 'type': order.buyOrSell.value.lower(),
-                'ordertype': order.orderType.value.lower(),
-                'price': "%.2f" % order.price,
+                'ordertype': 'market',
                 'volume': str(order.volume),
             })
 
@@ -334,16 +325,16 @@ class MarketEngine():
             WARNING: Ignores all safety standards and does not check BookKeeper for our current assets
             """
             resp = None
-            #if order.exchange is Exchange.KRAKEN:
-            #    resp = self._makeTradeKraken(order)
-            #    BookKeeper.instance().reportOrder(order=order)
-            #    return resp
-            #if order.exchange is Exchange.BINANCE:
-            #    resp = self._makeTradeBinance(order)
-            #    BookKeeper.instance().reportOrder(order=order)
-            #    return resp
-            #else:
-            #    raise NotImplementedError('make trade is not implemented for {}'.format(order.exchange))
+            if order.exchange is Exchange.KRAKEN:
+                resp = self._makeTradeKraken(order)
+                BookKeeper.instance().reportOrder(order=order)
+                return resp
+            if order.exchange is Exchange.BINANCE:
+                resp = self._makeTradeBinance(order)
+                BookKeeper.instance().reportOrder(order=order)
+                return resp
+            else:
+                raise NotImplementedError('make trade is not implemented for {}'.format(order.exchange))
 
         def createSafeTrades(self, orders: List[Order], updateBookKeeper: bool = True):
             """
@@ -451,10 +442,17 @@ class MarketEngine():
             """
             Method that returns a list of currency pairs supported by the Market Engine
             """
+            if not self._supportedCurrencyPairs:
+                self._supportedCurrencyPairs = self._getTradeablePairsKraken()
             return self._supportedCurrencyPairs
 
 
     INSTANCE = None
+    @classmethod
+    def initialize(cls, currencies, exchanges, pairs):
+        MarketEngine.INSTANCE = cls._MarketEngine(currencies, exchanges, pairs)
+
+
     @classmethod
     def instance(cls):
         """
@@ -463,9 +461,8 @@ class MarketEngine():
         """
         if MarketEngine.INSTANCE:
             return MarketEngine.INSTANCE
-        else:
-            MarketEngine.INSTANCE = cls._MarketEngine()
-            return MarketEngine.INSTANCE
+        else:        
+            raise AttributeError('You must initalize the Market Engine before trying to use it!')
 
     def __call__(self):
         raise TypeError('MarketEngine must be accessed through \'MarketEngine.instance()\'.')

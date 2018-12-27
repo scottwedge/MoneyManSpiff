@@ -17,14 +17,14 @@ from virtual_market import VirtualMarket
 
 class ArbitrageEngine():
     class _ArbitrageEngine():
-        def __init__(self):
+        def __init__(self, currencies, exchanges, pairs):
             self._graph = Graph()
 
-            self._supported_currencies = MarketEngine.instance().supportedCurrencies()
+            self._supported_currencies = currencies
             for currency in self._supported_currencies:
                 self._graph.addNode(currency)
-            self._supported_exchanges = MarketEngine.instance().supportedExchanges()
-            self._supported_currency_pairs = MarketEngine.instance().supportedCurrencyPairs()
+            self._supported_exchanges = exchanges
+            self._supported_currency_pairs = pairs
 
         def updateGraph(self):
             """
@@ -168,6 +168,11 @@ class ArbitrageEngine():
 
     INSTANCE = None
     @classmethod
+    def initialize(cls, currencies, exchanges, pairs):
+        ArbitrageEngine.INSTANCE = cls._ArbitrageEngine(currencies, exchanges, pairs)
+
+
+    @classmethod
     def instance(cls):
         """
         Returns the singleton instance. On its first call, raises and error and then calls the
@@ -175,9 +180,8 @@ class ArbitrageEngine():
         """
         if ArbitrageEngine.INSTANCE:
             return ArbitrageEngine.INSTANCE
-        else:
-            ArbitrageEngine.INSTANCE = cls._ArbitrageEngine()
-            return ArbitrageEngine.INSTANCE
+        else:        
+            raise AttributeError('You must initalize the Arbitrage Engine before trying to use it!')
 
     def __call__(self):
         raise TypeError('ArbitrageEngine must be accessed through \'ArbitrageEngine.instance()\'.')

@@ -22,6 +22,12 @@ def loadKeys(path):
 loadKrakenKeys = partial(loadKeys, 'keys/kraken.key')
 loadBinanceKeys = partial(loadKeys, 'keys/binance.key')
 
+def splitPair(currencies, pair) -> (str, str):
+    """ Given a list of currencies, splits a given pair """
+    for currency in currencies:
+        if pair.startswith(currency):
+            return (pair[:len(currency)], pair[len(currency):])
+
 def validPair(currencies, pair):
     """
     Given a list of currencies we support trading on, determins if the pair is valid

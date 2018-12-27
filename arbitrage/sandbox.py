@@ -34,7 +34,7 @@ def containsTwo(currencies, pair):
 CURRENCIES = [c.rstrip('\n') for c in open('currencies.txt').read().split(',')]
 cT = partial(containsTwo, CURRENCIES)
 
-(bPublic, bSecret) = [line.rstrip('\n') for line in open('binance.key').readlines()]
+#(bPublic, bSecret) = [line.rstrip('\n') for line in open('binance.key').readlines()]
 B = ccxt.binance()
 bInfo = B.publicGetExchangeInfo()
 bRawPairs = [entry['symbol'] for entry in bInfo['symbols']]
