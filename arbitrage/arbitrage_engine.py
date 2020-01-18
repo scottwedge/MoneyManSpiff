@@ -1,5 +1,5 @@
 """
-Singleton object used to identify arbitrage oppurtunities and exploit them
+Singleton object used to identify arbitrage opportunities and exploit them
 
 Author: Parker Timmerman
 """
